@@ -5,6 +5,7 @@
 
 #include "wasm_exec_env.h"
 #include "wasm_runtime_common.h"
+#include "wasm_memory.h"
 #if WASM_ENABLE_INTERP != 0
 #include "../interpreter/wasm_runtime.h"
 #endif
@@ -31,6 +32,7 @@ wasm_exec_env_create_internal(struct WASMModuleInstanceCommon *module_inst,
     if (total_size >= UINT32_MAX
         || !(exec_env = wasm_runtime_malloc((uint32)total_size)))
         return NULL;
+    alloc_infos(exec_env, WASMExecEnvT, stack_size);
 
     memset(exec_env, 0, (uint32)total_size);
 

@@ -3,6 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
+#include <stddef.h>
+#include <stdint.h>
+
 #include "wasm_loader.h"
 #include "bh_common.h"
 #include "bh_log.h"
@@ -10,6 +13,8 @@
 #include "wasm_opcode.h"
 #include "wasm_runtime.h"
 #include "../common/wasm_native.h"
+#include "../common/wasm_memory.h"
+
 
 /* Read a value of given type from the address pointed to by the given
    pointer and increase the pointer to the position just after the
@@ -384,6 +389,7 @@ const_str_list_insert(const uint8 *str, uint32 len, WASMModule *module,
                                error_buf, error_buf_size))) {
         return NULL;
     }
+    alloc_infos(node, StringNodeT, len + 1);
 
     node->str = ((char*)node) + sizeof(StringNode);
     bh_memcpy_s(node->str, len + 1, str, len);
@@ -548,6 +554,7 @@ load_type_section(const uint8 *buf, const uint8 *buf_end, WASMModule *module,
                     (total_size, error_buf, error_buf_size))) {
             return false;
         }
+        alloc_infos(module->types, WASMTypeTT, type_count);
 
         for (i = 0; i < type_count; i++) {
             CHECK_BUF(p, p_end, 1);
@@ -580,6 +587,7 @@ load_type_section(const uint8 *buf, const uint8 *buf_end, WASMModule *module,
                         loader_malloc(total_size, error_buf, error_buf_size))) {
                 return false;
             }
+            alloc_infos(type, WASMTypeT, total_size);
 
             /* Resolve param types and result types */
             type->param_count = (uint16)param_count;
@@ -1610,6 +1618,7 @@ load_import_section(const uint8 *buf, const uint8 *buf_end, WASMModule *module,
                     (total_size, error_buf, error_buf_size))) {
             return false;
         }
+        alloc_infos(module->imports, WASMImportT, import_count);
 
         p_old = p;
 
@@ -1827,6 +1836,7 @@ init_function_local_offsets(WASMFunction *func,
                loader_malloc(total_size, error_buf, error_buf_size))) {
         return false;
     }
+    alloc_infos(func->local_offsets, uint16T, param_count + local_count);
 
     for (i = 0; i < param_count; i++) {
         func->local_offsets[i] = (uint16)local_offset;
@@ -1876,6 +1886,7 @@ load_function_section(const uint8 *buf, const uint8 *buf_end,
                     loader_malloc(total_size, error_buf, error_buf_size))) {
             return false;
         }
+        alloc_infos(module->functions, WASMFunctionTT, func_count);
 
         for (i = 0; i < func_count; i++) {
             /* Resolve function type */
@@ -1926,6 +1937,8 @@ load_function_section(const uint8 *buf, const uint8 *buf_end,
                         loader_malloc(total_size, error_buf, error_buf_size))) {
                 return false;
             }
+            alloc_info(func, WASMFunctionT);
+            alloc_infos(func + sizeof(WASMFunction), uint8T, local_count);
 
             /* Set function type, local count, code size and code body */
             func->func_type = module->types[type_index];
@@ -2054,6 +2067,7 @@ load_table_section(const uint8 *buf, const uint8 *buf_end, WASMModule *module,
                     (total_size, error_buf, error_buf_size))) {
             return false;
         }
+        alloc_infos(module->tables, WASMTableT, table_count);
 
         /* load each table */
         table = module->tables;
@@ -2096,6 +2110,7 @@ load_memory_section(const uint8 *buf, const uint8 *buf_end, WASMModule *module,
                     (total_size, error_buf, error_buf_size))) {
             return false;
         }
+        alloc_infos(module->memories, WASMMemoryT, memory_count);
 
         /* load each memory */
         memory = module->memories;
@@ -2134,6 +2149,7 @@ load_global_section(const uint8 *buf, const uint8 *buf_end, WASMModule *module,
                     (total_size, error_buf, error_buf_size))) {
             return false;
         }
+        alloc_infos(module->globals, WASMGlobalT, global_count);
 
         global = module->globals;
 
@@ -2206,6 +2222,7 @@ load_export_section(const uint8 *buf, const uint8 *buf_end, WASMModule *module,
                     (total_size, error_buf, error_buf_size))) {
             return false;
         }
+        alloc_infos(module->exports, WASMExportT, export_count);
 
         export = module->exports;
         for (i = 0; i < export_count; i++, export++) {
@@ -2384,8 +2401,10 @@ load_func_index_vec(const uint8 **p_buf, const uint8 *buf_end,
                 loader_malloc(total_size, error_buf, error_buf_size))) {
         return false;
     }
+    alloc_infos(table_segment->func_indexes, uint32T, function_count);
 
-    for (i = 0; i < function_count; i++) {
+    for (i = 0; i < function_count; i++)
+    {
         InitializerExpression init_expr = { 0 };
 
 #if WASM_ENABLE_REF_TYPES != 0
@@ -2442,6 +2461,8 @@ load_table_segment_section(const uint8 *buf, const uint8 *buf_end, WASMModule *m
                 (total_size, error_buf, error_buf_size))) {
             return false;
         }
+        alloc_infos(module->table_segments, WASMTableSegT,
+                    table_segment_count);
 
         table_segment = module->table_segments;
         for (i = 0; i < table_segment_count; i++, table_segment++) {
@@ -2594,8 +2615,10 @@ load_data_segment_section(const uint8 *buf, const uint8 *buf_end,
                     (total_size, error_buf, error_buf_size))) {
             return false;
         }
+        alloc_infos(module->data_segments, WASMDataSegT, data_seg_count);
 
-        for (i = 0; i < data_seg_count; i++) {
+        for (i = 0; i < data_seg_count; i++)
+        {
             read_leb_uint32(p, p_end, mem_index);
 #if WASM_ENABLE_BULK_MEMORY != 0
             is_passive = false;
@@ -2647,6 +2670,7 @@ check_mem_index:
                         (sizeof(WASMDataSeg), error_buf, error_buf_size))) {
                 return false;
             }
+            alloc_info(dataseg, WASMDataSegT);
 
 #if WASM_ENABLE_BULK_MEMORY != 0
             dataseg->is_passive = is_passive;
@@ -3288,6 +3312,7 @@ create_module(char *error_buf, uint32 error_buf_size)
     if (!module) {
         return NULL;
     }
+    alloc_info(module, WASMModuleT);
 
     module->module_type = Wasm_Module_Bytecode;
 
@@ -3397,6 +3422,7 @@ create_sections(const uint8 *buf, uint32 size,
                                           error_buf, error_buf_size))) {
                 return false;
             }
+            alloc_info(section, WASMSectionT);
 
             section->section_type = section_type;
             section->section_body = (uint8*)p;
@@ -4280,10 +4306,13 @@ memory_realloc(void *mem_old, uint32 size_old, uint32 size_new,
     bh_assert(size_new > size_old);
     if ((mem_new = loader_malloc
                 (size_new, error_buf, error_buf_size))) {
+        alloc_infos(mem_new, uint8T,size_new);
         bh_memcpy_s(mem_new, size_new, mem_old, size_old);
         memset(mem_new + size_old, 0, size_new - size_old);
         wasm_runtime_free(mem_old);
+        free_info(mem_old);
     }
+
     return mem_new;
 }
 
@@ -4450,13 +4479,16 @@ static void
 wasm_loader_ctx_destroy(WASMLoaderContext *ctx)
 {
     if (ctx) {
-        if (ctx->frame_ref_bottom)
+        if (ctx->frame_ref_bottom){
             wasm_runtime_free(ctx->frame_ref_bottom);
+            free_info(ctx->frame_ref_bottom);
+        }
         if (ctx->frame_csp_bottom) {
 #if WASM_ENABLE_FAST_INTERP != 0
             free_all_label_patch_lists(ctx->frame_csp_bottom, ctx->csp_num);
 #endif
             wasm_runtime_free(ctx->frame_csp_bottom);
+            free_info(ctx->frame_csp_bottom);
         }
 #if WASM_ENABLE_FAST_INTERP != 0
         if (ctx->frame_offset_bottom)
@@ -4465,6 +4497,7 @@ wasm_loader_ctx_destroy(WASMLoaderContext *ctx)
             wasm_runtime_free(ctx->const_buf);
 #endif
         wasm_runtime_free(ctx);
+        free_info(ctx);
     }
 }
 
@@ -4475,12 +4508,14 @@ wasm_loader_ctx_init(WASMFunction *func)
         wasm_runtime_malloc(sizeof(WASMLoaderContext));
     if (!loader_ctx)
         return NULL;
+    alloc_info(loader_ctx, WASMLoaderContextT);
     memset(loader_ctx, 0, sizeof(WASMLoaderContext));
 
     loader_ctx->frame_ref_size = 32;
     if (!(loader_ctx->frame_ref_bottom = loader_ctx->frame_ref =
             wasm_runtime_malloc(loader_ctx->frame_ref_size)))
         goto fail;
+    alloc_infos(loader_ctx->frame_ref_bottom, uint8T,loader_ctx->frame_ref_size);
     memset(loader_ctx->frame_ref_bottom, 0, loader_ctx->frame_ref_size);
     loader_ctx->frame_ref_boundary = loader_ctx->frame_ref_bottom +
                                         loader_ctx->frame_ref_size;
@@ -4489,6 +4524,7 @@ wasm_loader_ctx_init(WASMFunction *func)
     if (!(loader_ctx->frame_csp_bottom = loader_ctx->frame_csp =
             wasm_runtime_malloc(loader_ctx->frame_csp_size)))
         goto fail;
+    alloc_infos(loader_ctx->frame_csp_bottom, uint8T,loader_ctx->frame_csp_size);
     memset(loader_ctx->frame_csp_bottom, 0, loader_ctx->frame_csp_size);
     loader_ctx->frame_csp_boundary = loader_ctx->frame_csp_bottom + 8;
 

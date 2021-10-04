@@ -5,6 +5,7 @@
 
 #include "wasm_native.h"
 #include "wasm_runtime_common.h"
+#include "wasm_memory.h"
 #include "bh_log.h"
 
 #if !defined(BH_PLATFORM_ZEPHYR) && !defined(BH_PLATFORM_ALIOS_THINGS) \
@@ -284,6 +285,7 @@ register_natives(const char *module_name,
 
     if (!(node = wasm_runtime_malloc(sizeof(NativeSymbolsNode))))
         return false;
+    alloc_info(node, NativeSymbolsNodeT);
 #if WASM_ENABLE_MEMORY_TRACING != 0
     os_printf("Register native, size: %u\n", sizeof(NativeSymbolsNode));
 #endif

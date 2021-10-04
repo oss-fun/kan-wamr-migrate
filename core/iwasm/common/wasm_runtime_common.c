@@ -1311,6 +1311,7 @@ wasm_runtime_call_wasm_a(WASMExecEnv *exec_env,
         wasm_runtime_set_exception(exec_env->module_inst, "allocate memory failed");
         goto fail1;
     }
+    alloc_infos(argv, uint32T, (uint64)(cell_num > 2 ? cell_num : 2));
 
     argc = parse_args_to_uint32_array(type, num_args, args, argv);
     if (!(ret = wasm_runtime_call_wasm(exec_env, function, argc, argv)))
@@ -1356,6 +1357,7 @@ wasm_runtime_call_wasm_v(WASMExecEnv *exec_env,
         wasm_runtime_set_exception(exec_env->module_inst, "allocate memory failed");
         goto fail1;
     }
+    alloc_infos(args, wasm_val_tT, num_args);
 
     va_start(vargs, num_args);
     for (i = 0; i < num_args; i++) {
@@ -1532,6 +1534,7 @@ wasm_runtime_module_malloc(WASMModuleInstanceCommon *module_inst, uint32 size,
     if (module_inst->module_type == Wasm_Module_Bytecode)
         return wasm_module_malloc((WASMModuleInstance*)module_inst, size,
                                   p_native_addr);
+    alloc_infos(p_native_addr, uint8T, size);
 #endif
 #if WASM_ENABLE_AOT != 0
     if (module_inst->module_type == Wasm_Module_AoT)
@@ -1889,6 +1892,7 @@ wasm_runtime_init_wasi(WASMModuleInstanceCommon *module_inst,
                                     error_buf, error_buf_size))) {
         return false;
     }
+    alloc_info(wasi_ctx, WASIContextT);
 
     wasm_runtime_set_wasi_ctx(module_inst, wasi_ctx);
 
@@ -1919,6 +1923,8 @@ wasm_runtime_init_wasi(WASMModuleInstanceCommon *module_inst,
                       "Init wasi environment failed: allocate memory failed");
         goto fail;
     }
+    alloc_infos(argv_list, chatTT, total_size);
+    alloc_infos(argv_buf, charT, argv_buf_size);
 
     for (i = 0; i < argc; i++) {
         argv_list[i] = argv_buf + argv_buf_offset;
@@ -1941,6 +1947,8 @@ wasm_runtime_init_wasi(WASMModuleInstanceCommon *module_inst,
                       "Init wasi environment failed: allocate memory failed");
         goto fail;
     }
+    alloc_infos(env_list, charTT, total_size);
+    alloc_infos(env_buf, charT, env_buf_size);
 
     for (i = 0; i < env_count; i++) {
         env_list[i] = env_buf + env_buf_offset;
@@ -1957,6 +1965,9 @@ wasm_runtime_init_wasi(WASMModuleInstanceCommon *module_inst,
                       "Init wasi environment failed: allocate memory failed");
         goto fail;
     }
+    alloc_info(curfds, fd_tableT);
+    alloc_info(prestats, fd_prestatsT);
+    alloc_info(argv_environ, argv_environ_valuesT);
 
     if (!fd_table_init(curfds)) {
         set_error_buf(error_buf, error_buf_size,
@@ -2115,6 +2126,7 @@ wasm_runtime_init_wasi(WASMModuleInstanceCommon *module_inst,
                             error_buf, error_buf_size);
     if (!uvwasi)
         return false;
+    alloc_info(uvwasi, uvwasi_tT);
 
     /* Setup the initialization options */
     uvwasi_options_init(&init_options);
@@ -2135,6 +2147,9 @@ wasm_runtime_init_wasi(WASMModuleInstanceCommon *module_inst,
         if (init_options.preopens == NULL)
             goto fail;
 
+        alloc_infos(init_options.preopens, uvwasi_preopen_tT,
+                    init_options.preopenc);
+
         for (i = 0; i < init_options.preopenc; i++) {
             init_options.preopens[i].real_path = dir_list[i];
             init_options.preopens[i].mapped_path =
@@ -2148,6 +2163,8 @@ wasm_runtime_init_wasi(WASMModuleInstanceCommon *module_inst,
                               error_buf, error_buf_size);
         if (envp == NULL)
             goto fail;
+
+        alloc_infos(envp, charTT, env_count + 1);
 
         for (i = 0; i < env_count; i++) {
             envp[i] = env[i];
@@ -2381,6 +2398,7 @@ wasm_runtime_invoke_native_raw(WASMExecEnv *exec_env, void *func_ptr,
                                      NULL, 0))) {
             return false;
         }
+        alloc_infos(argv1, uint64T, argc1);
     }
 
     argv_dst = argv1;
@@ -2654,6 +2672,7 @@ wasm_runtime_invoke_native(WASMExecEnv *exec_env, void *func_ptr,
                                      NULL, 0))) {
             return false;
         }
+        alloc_infos(argv1, uint32T, argc1);
     }
 
     ints = argv1;
@@ -2951,6 +2970,7 @@ wasm_runtime_invoke_native(WASMExecEnv *exec_env, void *func_ptr,
                                      NULL, 0))) {
             return false;
         }
+        alloc_infos(argv1, uint32T, argc1);
     }
 
     for (i = 0; i < sizeof(WASMExecEnv*) / sizeof(uint32); i++)
@@ -3175,6 +3195,7 @@ wasm_runtime_invoke_native(WASMExecEnv *exec_env, void *func_ptr,
                                      NULL, 0))) {
             return false;
         }
+        alloc_infos(argv1, uint64T, argc1);
     }
 
 #ifndef BUILD_TARGET_RISCV64_LP64
@@ -3457,6 +3478,7 @@ wasm_runtime_spawn_thread(WASMExecEnv *exec_env, wasm_thread_t *tid,
         wasm_runtime_destroy_spawned_exec_env(new_exec_env);
         return -1;
     }
+    alloc_info(thread_arg, WASMThreadArgT);
 
     thread_arg->new_exec_env = new_exec_env;
     thread_arg->callback = callback;
@@ -3592,6 +3614,7 @@ wasm_externref_obj2ref(WASMModuleInstanceCommon *module_inst,
     if (!(node = wasm_runtime_malloc(sizeof(ExternRefMapNode)))) {
         goto fail1;
     }
+    alloc_info(node, ExternRefMapNodeT);
 
     memset(node, 0, sizeof(ExternRefMapNode));
     node->extern_obj = extern_obj;
@@ -4112,6 +4135,7 @@ wasm_runtime_invoke_c_api_native(WASMModuleInstanceCommon *module_inst,
         wasm_runtime_set_exception(module_inst, "allocate memory failed");
         return false;
     }
+    alloc_infos(params, wasm_val_tT, func_type->param_count);
 
     if (!argv_to_params(params, argv, func_type)) {
         wasm_runtime_set_exception(module_inst, "unsupported param type");
@@ -4124,6 +4148,7 @@ wasm_runtime_invoke_c_api_native(WASMModuleInstanceCommon *module_inst,
         wasm_runtime_set_exception(module_inst, "allocate memory failed");
         goto fail;
     }
+    alloc_infos(results, wasm_val_tT, func_type->result_count);
 
     params_vec.data = params;
     params_vec.num_elems = func_type->param_count;

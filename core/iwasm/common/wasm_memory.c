@@ -6,6 +6,7 @@
 #include "wasm_runtime_common.h"
 #include "bh_platform.h"
 #include "mem_alloc.h"
+#include "wasm_memory.h"
 
 typedef enum Memory_Mode {
     MEMORY_MODE_UNKNOWN = 0,
@@ -22,6 +23,12 @@ static void *(*realloc_func)(void *ptr, unsigned int size) = NULL;
 static void (*free_func)(void *ptr) = NULL;
 
 static unsigned int global_pool_size;
+
+static Pool_Info **root_info = NULL;
+
+void alloc_info(void *addr,Data_Type type){
+    
+}
 
 static bool
 wasm_memory_init_with_pool(void *mem, unsigned int bytes)
@@ -63,9 +70,10 @@ wasm_runtime_memory_init(mem_alloc_type_t mem_alloc_type,
         return wasm_memory_init_with_pool(alloc_option->pool.heap_buf,
                                           alloc_option->pool.heap_size);
     else if (mem_alloc_type == Alloc_With_Allocator)
-        return wasm_memory_init_with_allocator(alloc_option->allocator.malloc_func,
-                                               alloc_option->allocator.realloc_func,
-                                               alloc_option->allocator.free_func);
+        return wasm_memory_init_with_allocator(
+          alloc_option->allocator.malloc_func,
+          alloc_option->allocator.realloc_func,
+          alloc_option->allocator.free_func);
     else if (mem_alloc_type == Alloc_With_System_Allocator)
         return wasm_memory_init_with_allocator(os_malloc, os_realloc, os_free);
     else
@@ -93,7 +101,8 @@ static inline void *
 wasm_runtime_malloc_internal(unsigned int size)
 {
     if (memory_mode == MEMORY_MODE_UNKNOWN) {
-        LOG_WARNING("wasm_runtime_malloc failed: memory hasn't been initialize.\n");
+        LOG_WARNING(
+          "wasm_runtime_malloc failed: memory hasn't been initialize.\n");
         return NULL;
     }
     else if (memory_mode == MEMORY_MODE_POOL) {
@@ -108,7 +117,8 @@ static inline void *
 wasm_runtime_realloc_internal(void *ptr, unsigned int size)
 {
     if (memory_mode == MEMORY_MODE_UNKNOWN) {
-        LOG_WARNING("wasm_runtime_realloc failed: memory hasn't been initialize.\n");
+        LOG_WARNING(
+          "wasm_runtime_realloc failed: memory hasn't been initialize.\n");
         return NULL;
     }
     else if (memory_mode == MEMORY_MODE_POOL) {

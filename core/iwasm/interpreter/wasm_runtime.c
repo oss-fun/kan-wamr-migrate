@@ -10,6 +10,7 @@
 #include "bh_log.h"
 #include "mem_alloc.h"
 #include "../common/wasm_runtime_common.h"
+#include "../common/wasm_memory.h"
 #if WASM_ENABLE_SHARED_MEMORY != 0
 #include "../common/wasm_shared_memory.h"
 #endif
@@ -267,6 +268,7 @@ memory_instantiate(WASMModuleInstance *module_inst,
                                   error_buf, error_buf_size))) {
         return NULL;
     }
+    alloc_info(memory, WASMMemoryInstanceT);
 
     if (memory_data_size > 0
         && !(memory->memory_data =
@@ -274,6 +276,7 @@ memory_instantiate(WASMModuleInstance *module_inst,
                                    error_buf, error_buf_size))) {
         goto fail1;
     }
+    alloc_infos(memory->memory_data, uint8T, memory_data_size);
 
     memory->module_type = Wasm_Module_Bytecode;
     memory->num_bytes_per_page = num_bytes_per_page;
@@ -292,9 +295,11 @@ memory_instantiate(WASMModuleInstance *module_inst,
                                                    error_buf, error_buf_size))) {
             goto fail2;
         }
-        if (!mem_allocator_create_with_struct_and_pool
-                    (memory->heap_handle, heap_struct_size,
-                     memory->heap_data, heap_size)) {
+        alloc_infos(memory->heap_handle, gc_heap_tT);
+
+        if (!mem_allocator_create_with_struct_and_pool(
+              memory->heap_handle, heap_struct_size, memory->heap_data,
+              heap_size)) {
             set_error_buf(error_buf, error_buf_size, "init app heap failed");
             goto fail3;
         }
@@ -356,6 +361,7 @@ memories_instantiate(const WASMModule *module,
                                     error_buf, error_buf_size))) {
         return NULL;
     }
+    alloc_infos(memories, WASMMemoryInstanceTT, memory_count);
 
     /* instantiate memories from import section */
     import = module->import_memories;
@@ -472,6 +478,7 @@ tables_instantiate(const WASMModule *module,
                                   error_buf, error_buf_size))) {
         return NULL;
     }
+    alloc_infos(tables, WASMTableInstanceTT, table_count);
 
     /* instantiate tables from import section */
     import = module->import_tables;
@@ -516,6 +523,8 @@ tables_instantiate(const WASMModule *module,
             tables_deinstantiate(tables, table_count);
             return NULL;
         }
+        alloc_infos(table, WASMTableInstanceT,
+                    (uint64)max_size_fixed * sizeof(uint32));
 
         /* Set all elements to -1 to mark them as uninitialized elements */
         memset(table, -1, (uint32)total_size);
@@ -557,6 +566,8 @@ tables_instantiate(const WASMModule *module,
             tables_deinstantiate(tables, table_count);
             return NULL;
         }
+        alloc_infos(table, WASMTableInstanceT,
+                    sizeof(uint32) * (uint64)max_size_fixed);
 
         /* Set all elements to -1 to mark them as uninitialized elements */
         memset(table, -1, (uint32)total_size);
@@ -602,6 +613,7 @@ functions_instantiate(const WASMModule *module,
                                      error_buf, error_buf_size))) {
         return NULL;
     }
+    alloc_infos(functions, WASMFunctionT, function_count);
 
     /* instantiate functions from import section */
     function = functions;
@@ -721,6 +733,7 @@ globals_instantiate(const WASMModule *module,
                                    error_buf, error_buf_size))) {
         return NULL;
     }
+    alloc_infos(globals, WASMGlobalInstanceT, global_count);
 
     /* instantiate globals from import section */
     global = globals;
@@ -846,6 +859,7 @@ export_functions_instantiate(const WASMModule *module,
                 (total_size, error_buf, error_buf_size))) {
         return NULL;
     }
+    alloc_infos(export_func, WASMExportFuncInstance, export_func_count);
 
     for (i = 0; i < module->export_count; i++, export++)
         if (export->kind == EXPORT_KIND_FUNC) {
@@ -1155,6 +1169,7 @@ wasm_instantiate(WASMModule *module, bool is_sub_inst,
                                        error_buf, error_buf_size))) {
         return NULL;
     }
+    alloc_info(module_inst, WASMModuleInstance);
 
     module_inst->module = module;
 
@@ -1207,6 +1222,7 @@ wasm_instantiate(WASMModule *module, bool is_sub_inst,
                     (global_data_size, error_buf, error_buf_size))) {
             goto fail;
         }
+        alloc_infos(module_inst->global_data, uint8T, global_data_size);
     }
 
     /* Instantiate memories/tables/functions */
@@ -1929,6 +1945,8 @@ wasm_module_dup_data(WASMModuleInstance *module_inst,
     char *buffer;
     uint32 buffer_offset = wasm_module_malloc(module_inst, size,
                                               (void**)&buffer);
+    alloc_infos(buffer, uint8T, size);
+
     if (buffer_offset != 0) {
         buffer = wasm_addr_app_to_native(module_inst, buffer_offset);
         bh_memcpy_s(buffer, size, src, size);
@@ -2116,8 +2134,12 @@ wasm_enlarge_memory(WASMModuleInstance *module, uint32 inc_page_count)
             bh_memcpy_s(new_memory_data, (uint32)total_size,
                         memory_data, total_size_old);
             wasm_runtime_free(memory_data);
+            free_info(memory_data);
         }
+    }else{
+        free_info(memory_data);
     }
+    alloc_infos(new_memory_data, uint8T, total_size);
 
     memset(new_memory_data + total_size_old,
            0, (uint32)total_size - total_size_old);

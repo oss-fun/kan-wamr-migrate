@@ -8,6 +8,7 @@
 #include "wasm_runtime.h"
 #include "wasm_opcode.h"
 #include "wasm_loader.h"
+#include"../common/wasm_memory.h"
 #include "../common/wasm_exec_env.h"
 #if WASM_ENABLE_SHARED_MEMORY != 0
 #include "../common/wasm_shared_memory.h"
@@ -696,6 +697,7 @@ ALLOC_FRAME(WASMExecEnv *exec_env, uint32 size, WASMInterpFrame *prev_frame)
 
     if (frame) {
         frame->prev_frame = prev_frame;
+        alloc_info(frame, WASMInterpFrameT);
 #if WASM_ENABLE_PERF_PROFILING != 0
         frame->time_started = os_time_get_boot_microsecond();
 #endif
@@ -719,6 +721,7 @@ FREE_FRAME(WASMExecEnv *exec_env, WASMInterpFrame *frame)
     }
 #endif
     wasm_exec_env_free_wasm_frame(exec_env, frame);
+    free_info(frame);
 }
 
 static void
