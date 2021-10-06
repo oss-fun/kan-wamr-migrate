@@ -1923,7 +1923,7 @@ wasm_runtime_init_wasi(WASMModuleInstanceCommon *module_inst,
                       "Init wasi environment failed: allocate memory failed");
         goto fail;
     }
-    alloc_infos(argv_list, chatTT, total_size);
+    alloc_infos(argv_list, charTT, total_size);
     alloc_infos(argv_buf, charT, argv_buf_size);
 
     for (i = 0; i < argc; i++) {

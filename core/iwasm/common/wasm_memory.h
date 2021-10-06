@@ -50,6 +50,7 @@ typedef enum Data_Type {
     WASMModuleMemConsumptionT,
     WASMModuleInstMemConsumptionT,
     WASMMemoryInstanceCommonT,
+    WASMSectionT,
     WASMCApiFrameT,
 
     //wasm_shared_memory.h

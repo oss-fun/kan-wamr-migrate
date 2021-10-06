@@ -2,7 +2,7 @@
  * Copyright (C) 2019 Intel Corporation.  All rights reserved.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
-
+#include <stdlib.h>
 #include "wasm_runtime_common.h"
 #include "bh_platform.h"
 #include "mem_alloc.h"
@@ -24,10 +24,66 @@ static void (*free_func)(void *ptr) = NULL;
 
 static unsigned int global_pool_size;
 
+#define MAX_LIST_SIZE
 static Pool_Info **root_info = NULL;
+static Pool_Info *pool_list[MAX_LIST_SIZE] = {};
+static unsigned int addr_list_size = 0;
 
-void alloc_info(void *addr,Data_Type type){
-    
+/*
+struct Pool_Info {
+    unsigned int p_abs;
+    void *p_raw;
+    Data_Type type;
+    struct Pool_Info *next;
+}
+*/
+
+void
+insert(void *addr)
+{
+    int i, j;
+    void *p;
+    if (addr_list_size > MAX_LIST_SIZE - 1) {
+        exit(1);
+    }
+
+    for (i = 0; i < addr_list_size; i++) {
+        if (addr < addr_list[i]) {
+            for (j = i; j < addr_list_size + 1; j++) {
+                p = addr_list[i];
+                addr_list[i] = addr;
+                addr = p;
+            }
+            return i;
+        }
+    }
+    addr_list[i] = addr;
+    return i;
+}
+
+void
+alloc_info(void *addr, Data_Type type)
+{
+    Pool_Info *info = malloc(sizeof(Pool_Info));
+    *info = { .p_abs = addr - pool_allocator, .p_raw = addr, .type = type };
+    pool_list[info.p_abs] = info;
+}
+
+void
+alloc_infos(void *addr, Data_Type type, size_t size)
+{
+    switch (type) {
+        case:
+    }
+}
+
+void
+free_info(void *addr)
+{
+    if (pool_list[addr - pool_allocator] != 0) {
+        free(pool_list[addr - pool_allocator]);
+        pool_list[addr - pool_allocator] = 0;
+    }
 }
 
 static bool

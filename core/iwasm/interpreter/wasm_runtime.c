@@ -295,7 +295,7 @@ memory_instantiate(WASMModuleInstance *module_inst,
                                                    error_buf, error_buf_size))) {
             goto fail2;
         }
-        alloc_infos(memory->heap_handle, gc_heap_tT);
+        alloc_info(memory->heap_handle, gc_heap_tT);
 
         if (!mem_allocator_create_with_struct_and_pool(
               memory->heap_handle, heap_struct_size, memory->heap_data,
@@ -859,7 +859,7 @@ export_functions_instantiate(const WASMModule *module,
                 (total_size, error_buf, error_buf_size))) {
         return NULL;
     }
-    alloc_infos(export_func, WASMExportFuncInstance, export_func_count);
+    alloc_infos(export_func, WASMExportFuncInstanceT, export_func_count);
 
     for (i = 0; i < module->export_count; i++, export++)
         if (export->kind == EXPORT_KIND_FUNC) {
@@ -1169,7 +1169,7 @@ wasm_instantiate(WASMModule *module, bool is_sub_inst,
                                        error_buf, error_buf_size))) {
         return NULL;
     }
-    alloc_info(module_inst, WASMModuleInstance);
+    alloc_info(module_inst, WASMModuleInstanceT);
 
     module_inst->module = module;
 
