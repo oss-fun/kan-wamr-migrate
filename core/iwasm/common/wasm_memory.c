@@ -29,51 +29,117 @@ static Pool_Info **root_info = NULL;
 static Pool_Info *pool_list[MAX_LIST_SIZE] = {};
 static unsigned int addr_list_size = 0;
 
-/*
-struct Pool_Info {
-    unsigned int p_abs;
-    void *p_raw;
-    Data_Type type;
-    struct Pool_Info *next;
-}
-*/
+static void (*dump_data[ERRORT])(void *p);
 
-void
-insert(void *addr)
-{
-    int i, j;
-    void *p;
-    if (addr_list_size > MAX_LIST_SIZE - 1) {
-        exit(1);
-    }
 
-    for (i = 0; i < addr_list_size; i++) {
-        if (addr < addr_list[i]) {
-            for (j = i; j < addr_list_size + 1; j++) {
-                p = addr_list[i];
-                addr_list[i] = addr;
-                addr = p;
-            }
-            return i;
-        }
-    }
-    addr_list[i] = addr;
-    return i;
-}
+#define CASE_INFOS(data_type) \
+    case data_type##T:\
+        for(i=0;i<size;i++){\
+            info = malloc(sizeof(Pool_Info));\
+            *info = { .p_abs = addr - pool_allocator, .p_raw = addr, .type = type};\
+            pool_list[info.p_abs] = info;\
+            (data_type*)addr++;\
+        }\
+        break;
+
+
 
 void
 alloc_info(void *addr, Data_Type type)
 {
     Pool_Info *info = malloc(sizeof(Pool_Info));
-    *info = { .p_abs = addr - pool_allocator, .p_raw = addr, .type = type };
+    *info = { .p_abs = addr - pool_allocator, .p_raw = addr, .type = type};
     pool_list[info.p_abs] = info;
 }
 
 void
 alloc_infos(void *addr, Data_Type type, size_t size)
 {
+    Pool_Info *info;
+    int i;
     switch (type) {
-        case:
+        CASE_INFOS(char)
+        //CASE_INFOS(charTT)
+        CASE_INFOS(uint8)
+        CASE_INFOS(uint16)
+        CASE_INFOS(uint32)
+        CASE_INFOS(uint64)
+        
+        CASE_INFOS(gc_heap_t)
+        CASE_INFOS(base_addr)
+        CASE_INFOS(WASIContext)
+        CASE_INFOS(WASMThreadArg)
+        CASE_INFOS(ExternRefMapNode)
+
+        CASE_INFOS(fd_table)
+        CASE_INFOS(fd_prestats)
+        CASE_INFOS(argv_environ_values)
+
+        CASE_INFOS(uvwasi_t)
+        CASE_INFOS(uvwasi_preopen_t)
+
+        CASE_INFOS(wasm_val_t)
+        CASE_INFOS(WASMExecEnv)
+
+        CASE_INFOS(NativeSymbolsNode)
+
+        CASE_INFOS(WASMModuleCommon)
+        CASE_INFOS(WASMModuleInstanceCommon)
+        CASE_INFOS(WASMModuleMemConsumption)
+        CASE_INFOS(WASMModuleInstMemConsumption)
+        CASE_INFOS(WASMMemoryInstanceCommon)
+        CASE_INFOS(WASMSection)
+        CASE_INFOS(WASMCApiFrame)
+
+        CASE_INFOS(WASMSharedMemNode)
+
+        CASE_INFOS(WASMModule)
+        CASE_INFOS(WASMFunction)
+        //CASE_INFOS(WASMFunctionTT)
+        CASE_INFOS(WASMGlobal)
+        CASE_INFOS(WASMExport)
+        //CASE_INFOS(V128T)
+       CASE_INFOS( WASMValue)
+        CASE_INFOS(InitializerExpression)
+        CASE_INFOS(WASMType)
+        //CASE_INFOS(WASMTypeTT)
+        CASE_INFOS(WASMTable)
+        CASE_INFOS(WASMMemory)
+        CASE_INFOS(WASMTableImport)
+        CASE_INFOS(WASMMemoryImport)
+        CASE_INFOS(WASMFunctionImport)
+        CASE_INFOS(WASMGlobalImport)
+        CASE_INFOS(WASMImport)
+        CASE_INFOS(WASMTableSeg)
+        CASE_INFOS(WASMDataSeg)
+        CASE_INFOS(BlockAddr)
+        CASE_INFOS(WASIArguments)
+        CASE_INFOS(StringNode)
+        CASE_INFOS(BlockType)
+        CASE_INFOS(WASMBranchBlock)
+    
+        CASE_INFOS(WASMInterpFrame)
+
+        CASE_INFOS(BranchBlock)
+        CASE_INFOS(WASMLoaderContext)
+        CASE_INFOS(Const)
+
+        CASE_INFOS(WASMModuleInstance)
+
+        CASE_INFOS(WASMFunctionInstance)
+        CASE_INFOS(WASMMemoryInstance)
+        //CASE_INFOS(WASMMemoryInstanceTT)
+        CASE_INFOS(WASMTableInstance)
+        //CASE_INFOS(WASMTableInstanceTT)
+        CASE_INFOS(WASMGlobalInstance)
+        CASE_INFOS(WASMExportFuncInstance)
+        CASE_INFOS(WASMRuntimeFrame)
+
+        CASE_INFOS(WASMOpcode)
+        CASE_INFOS(WASMMiscEXTOpcode)
+        CASE_INFOS(WASMSimdEXTOpcode)
+        CASE_INFOS(WASMAtomicEXTOpcode)
+
     }
 }
 

@@ -106,6 +106,7 @@ typedef enum Data_Type {
     WASMMiscEXTOpcodeT,
     WASMSimdEXTOpcodeT,
     WASMAtomicEXTOpcodeT,
+    ERRORT
 } Data_Type;
 
 typedef struct Pool_Info {
