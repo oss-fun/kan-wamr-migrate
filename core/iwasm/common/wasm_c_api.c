@@ -58,6 +58,7 @@ malloc_internal(uint64 size)
     if (size < UINT32_MAX && (mem = wasm_runtime_malloc((uint32)size))) {
         memset(mem, 0, size);
     }
+    printf("malloc_internal\n");
 
     return mem;
 }
@@ -332,6 +333,7 @@ wasm_engine_new_internal(mem_alloc_type_t type, const MemAllocOption *opts)
     if (!(engine = malloc_internal(sizeof(wasm_engine_t)))) {
         goto failed;
     }
+    alloc_info(engine, wasm_engine_tT);
 
     /* create wasm_store_vec_t */
     INIT_VEC(engine->stores, wasm_store_vec_new_uninitialized, 1);
@@ -396,6 +398,7 @@ wasm_store_new(wasm_engine_t *engine)
         wasm_runtime_destroy_thread_env();
         return NULL;
     }
+    alloc_info(store, wasm_store_tT);
 
     /* new a vector, and new its data */
     INIT_VEC(store->modules, wasm_module_vec_new_uninitialized,
@@ -407,6 +410,7 @@ wasm_store_new(wasm_engine_t *engine)
         || !(bh_vector_init(store->foreigns, 24, sizeof(Vector *)))) {
         goto failed;
     }
+    alloc_info(store->foreigns, VectorT);
 
     /* append to a store list of engine */
     if (!bh_vector_append((Vector *)singleton_engine->stores, &store)) {
@@ -493,6 +497,7 @@ wasm_valtype_new(wasm_valkind_t kind)
     if (!(val_type = malloc_internal(sizeof(wasm_valtype_t)))) {
         return NULL;
     }
+    alloc_info(val_type, wasm_valtype_tT);
 
     val_type->kind = kind;
 
@@ -533,6 +538,7 @@ wasm_functype_new_internal(WASMType *type_rt)
     if (!(type = malloc_internal(sizeof(wasm_functype_t)))) {
         return NULL;
     }
+    alloc_info(type, wasm_functype_tT);
 
     type->extern_kind = WASM_EXTERN_FUNC;
 
@@ -591,6 +597,7 @@ wasm_functype_new(own wasm_valtype_vec_t *params,
     if (!(type = malloc_internal(sizeof(wasm_functype_t)))) {
         goto failed;
     }
+    alloc_info(type, wasm_functype_tT);
 
     type->extern_kind = WASM_EXTERN_FUNC;
 
@@ -598,12 +605,14 @@ wasm_functype_new(own wasm_valtype_vec_t *params,
     if (!(type->params = malloc_internal(sizeof(wasm_valtype_vec_t)))) {
         goto failed;
     }
+    alloc_info(type->params, wasm_valtype_vec_tT);
     bh_memcpy_s(type->params, sizeof(wasm_valtype_vec_t), params,
                 sizeof(wasm_valtype_vec_t));
 
     if (!(type->results = malloc_internal(sizeof(wasm_valtype_vec_t)))) {
         goto failed;
     }
+    alloc_info(type->results, wasm_valtype_vec_tT);
     bh_memcpy_s(type->results, sizeof(wasm_valtype_vec_t), results,
                 sizeof(wasm_valtype_vec_t));
 
@@ -691,6 +700,7 @@ wasm_globaltype_new(own wasm_valtype_t *val_type, wasm_mutability_t mut)
     if (!(global_type = malloc_internal(sizeof(wasm_globaltype_t)))) {
         return NULL;
     }
+    alloc_info(global_type, wasm_globaltype_tT);
 
     global_type->extern_kind = WASM_EXTERN_GLOBAL;
     global_type->val_type = val_type;
@@ -805,6 +815,7 @@ wasm_tabletype_new(own wasm_valtype_t *val_type, const wasm_limits_t *limits)
     if (!(table_type = malloc_internal(sizeof(wasm_tabletype_t)))) {
         return NULL;
     }
+    alloc_info(table_type, wasm_tabletype_tT);
 
     table_type->extern_kind = WASM_EXTERN_TABLE;
     table_type->val_type = val_type;
@@ -889,6 +900,7 @@ wasm_memorytype_new(const wasm_limits_t *limits)
     if (!(memory_type = malloc_internal(sizeof(wasm_memorytype_t)))) {
         return NULL;
     }
+    alloc_info(memory_type, wasm_memorytype_tT);
 
     memory_type->extern_kind = WASM_EXTERN_MEMORY;
     memory_type->limits.min = limits->min;
@@ -1047,18 +1059,21 @@ wasm_importtype_new(own wasm_byte_vec_t *module_name,
     if (!(import_type = malloc_internal(sizeof(wasm_importtype_t)))) {
         return NULL;
     }
+    alloc_info(import_type, wasm_importtype_tT);
 
     /* take ownership */
     if (!(import_type->module_name =
             malloc_internal(sizeof(wasm_byte_vec_t)))) {
         goto failed;
     }
+    alloc_info(import_type->module_name, wasm_byte_vec_tT);
     bh_memcpy_s(import_type->module_name, sizeof(wasm_byte_vec_t), module_name,
                 sizeof(wasm_byte_vec_t));
 
     if (!(import_type->name = malloc_internal(sizeof(wasm_byte_vec_t)))) {
         goto failed;
     }
+    alloc_info(import_type->name, wasm_byte_vec_tT);
     bh_memcpy_s(import_type->name, sizeof(wasm_byte_vec_t), field_name,
                 sizeof(wasm_byte_vec_t));
 
@@ -1162,11 +1177,13 @@ wasm_exporttype_new(own wasm_byte_vec_t *name,
     if (!(export_type = malloc_internal(sizeof(wasm_exporttype_t)))) {
         return NULL;
     }
+    alloc_info(export_type, wasm_exporttype_tT);
 
     if (!(export_type->name = malloc_internal(sizeof(wasm_byte_vec_t)))) {
         wasm_exporttype_delete(export_type);
         return NULL;
     }
+    alloc_info(export_type->name, wasm_byte_vec_tT);
     bh_memcpy_s(export_type->name, sizeof(wasm_byte_vec_t), name,
                 sizeof(wasm_byte_vec_t));
 
@@ -1352,6 +1369,7 @@ wasm_ref_new_internal(wasm_store_t *store,
     if (!(ref = malloc_internal(sizeof(wasm_ref_t)))) {
         return NULL;
     }
+    alloc_info(ref, wasm_ref_tT);
 
     ref->store = store;
     ref->kind = kind;
@@ -1509,6 +1527,7 @@ wasm_frame_new(wasm_instance_t *instance,
     if (!(frame = malloc_internal(sizeof(wasm_frame_t)))) {
         return NULL;
     }
+    alloc_info(frame, wasm_frame_tT);
 
     frame->instance = instance;
     frame->module_offset = (uint32)module_offset;
@@ -1604,10 +1623,12 @@ wasm_trap_new_internal(WASMModuleInstanceCommon *inst_comm_rt,
     if (!(trap = malloc_internal(sizeof(wasm_trap_t)))) {
         return NULL;
     }
+    alloc_info(trap, wasm_trap_tT);
 
     if (!(trap->message = malloc_internal(sizeof(wasm_byte_vec_t)))) {
         goto failed;
     }
+    alloc_info(trap->message, wasm_byte_vec_tT);
 
     wasm_name_new_from_string_nt(trap->message, error_info);
     if (strlen(error_info) && !trap->message->data) {
@@ -1666,6 +1687,7 @@ wasm_trap_new(wasm_store_t *store, const wasm_message_t *message)
     if (!(trap = malloc_internal(sizeof(wasm_trap_t)))) {
         return NULL;
     }
+    alloc_info(trap, wasm_trap_tT);
 
     INIT_VEC(trap->message, wasm_byte_vec_new, message->size, message->data);
 
@@ -1784,7 +1806,7 @@ wasm_foreign_new(wasm_store_t *store)
 
     if (!(foreign = malloc_internal(sizeof(wasm_foreign_t))))
         return NULL;
-
+    alloc_info(foreign, wasm_foreign_tT);
     foreign->store = store;
     foreign->kind = WASM_REF_foreign;
     foreign->foreign_idx_rt = (uint32)bh_vector_size(store->foreigns);
@@ -1877,7 +1899,7 @@ wasm_module_new(wasm_store_t *store, const wasm_byte_vec_t *binary)
     if (!module_ex) {
         goto failed;
     }
-
+    alloc_info(module_ex, wasm_module_ex_tT);
     INIT_VEC(module_ex->binary, wasm_byte_vec_new, binary->size, binary->data);
 
 #if WASM_ENABLE_AOT != 0 && WASM_ENABLE_JIT != 0
@@ -2389,6 +2411,7 @@ wasm_func_new_basic(wasm_store_t *store,
     if (!(func = malloc_internal(sizeof(wasm_func_t)))) {
         goto failed;
     }
+    alloc_info(func, wasm_func_tT);
 
     func->store = store;
     func->kind = WASM_EXTERN_FUNC;
@@ -2415,6 +2438,7 @@ wasm_func_new_with_env_basic(wasm_store_t *store,
     if (!(func = malloc_internal(sizeof(wasm_func_t)))) {
         goto failed;
     }
+    alloc_info(func, wasm_func_tT);
 
     func->store = store;
     func->kind = WASM_EXTERN_FUNC;
@@ -2469,6 +2493,7 @@ wasm_func_new_internal(wasm_store_t *store,
     if (!func) {
         goto failed;
     }
+    alloc_info(func, wasm_func_tT);
 
     func->kind = WASM_EXTERN_FUNC;
 
@@ -2800,6 +2825,7 @@ wasm_func_call(const wasm_func_t *func,
         if (!(argv = malloc_internal(sizeof(uint64) * alloc_count))) {
             goto failed;
         }
+        alloc_infos(argv, uint64T, alloc_count);
     }
 
     /* copy parametes */
@@ -2882,7 +2908,7 @@ wasm_global_new(wasm_store_t *store,
     if (!global) {
         goto failed;
     }
-
+    alloc_info(global, wasm_global_tT);
     global->store = store;
     global->kind = WASM_EXTERN_GLOBAL;
     global->type = wasm_globaltype_copy(global_type);
@@ -2894,6 +2920,7 @@ wasm_global_new(wasm_store_t *store,
     if (!global->init) {
         goto failed;
     }
+    alloc_info(global->init, wasm_val_tT);
 
     wasm_val_copy(global->init, init);
     /* TODO: how to check if above is failed */
@@ -2920,6 +2947,7 @@ wasm_global_copy(const wasm_global_t *src)
     if (!global) {
         goto failed;
     }
+    alloc_info(global, wasm_global_tT);
 
     global->kind = WASM_EXTERN_GLOBAL;
     global->type = wasm_globaltype_copy(src->type);
@@ -2931,6 +2959,7 @@ wasm_global_copy(const wasm_global_t *src)
     if (!global->init) {
         goto failed;
     }
+    alloc_info(global->init, wasm_val_tT);
 
     wasm_val_copy(global->init, src->init);
 
@@ -3148,6 +3177,7 @@ wasm_global_new_internal(wasm_store_t *store,
     if (!global) {
         goto failed;
     }
+    alloc_info(global,wasm_global_tT);
 
     global->store = store;
     global->kind = WASM_EXTERN_GLOBAL;
@@ -3202,6 +3232,7 @@ wasm_global_new_internal(wasm_store_t *store,
     if (!global->init) {
         goto failed;
     }
+    alloc_info(global->init, wasm_val_tT);
 
 #if WASM_ENABLE_INTERP != 0
     if (inst_comm_rt->module_type == Wasm_Module_Bytecode) {
@@ -3245,6 +3276,7 @@ wasm_table_new_basic(wasm_store_t *store, const wasm_tabletype_t *type)
     if (!(table = malloc_internal(sizeof(wasm_table_t)))) {
         goto failed;
     }
+    alloc_info(table, wasm_table_tT);
 
     table->store = store;
     table->kind = WASM_EXTERN_TABLE;
@@ -3275,6 +3307,7 @@ wasm_table_new_internal(wasm_store_t *store,
     if (!(table = malloc_internal(sizeof(wasm_table_t)))) {
         goto failed;
     }
+    alloc_info(table, wasm_table_tT);
 
     table->store = store;
     table->kind = WASM_EXTERN_TABLE;
@@ -3572,7 +3605,7 @@ wasm_memory_new_basic(wasm_store_t *store, const wasm_memorytype_t *type)
     if (!(memory = malloc_internal(sizeof(wasm_memory_t)))) {
         goto failed;
     }
-
+    alloc_info(memory, wasm_memory_tT);
     memory->store = store;
     memory->kind = WASM_EXTERN_MEMORY;
     memory->type = wasm_memorytype_copy(type);
@@ -3624,6 +3657,7 @@ wasm_memory_new_internal(wasm_store_t *store,
     if (!(memory = malloc_internal(sizeof(wasm_memory_t)))) {
         goto failed;
     }
+    alloc_info(memory, wasm_memory_tT);
 
     memory->store = store;
     memory->kind = WASM_EXTERN_MEMORY;
@@ -4241,6 +4275,7 @@ aot_process_export(wasm_store_t *store,
         if (!(external->name = malloc_internal(sizeof(wasm_byte_vec_t)))) {
             goto failed;
         }
+        alloc_info(external->name, wasm_byte_vec_tT);
 
         wasm_name_new_from_string(external->name, export->name);
         if (strlen(export->name) && !external->name->data) {
@@ -4295,6 +4330,7 @@ wasm_instance_new_with_args(wasm_store_t *store,
     if (!instance) {
         goto failed;
     }
+    alloc_info(instance,wasm_instance_tT);
 
     /* link module and imports */
     if (imports) {

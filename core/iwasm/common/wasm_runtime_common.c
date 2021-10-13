@@ -1810,6 +1810,7 @@ wasm_runtime_enlarge_memory(WASMModuleInstanceCommon *module,
     return false;
 }
 
+#define WASM_ENABLE_LIBC_WASI 1
 #if WASM_ENABLE_LIBC_WASI != 0
 
 void
@@ -2364,6 +2365,7 @@ wasm_runtime_register_natives(const char *module_name,
                               NativeSymbol *native_symbols,
                               uint32 n_native_symbols)
 {
+    printf("symbol runtime\n");
     return wasm_native_register_natives(module_name,
                                         native_symbols, n_native_symbols);
 }

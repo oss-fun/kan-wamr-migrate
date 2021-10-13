@@ -294,7 +294,7 @@ register_natives(const char *module_name,
     node->native_symbols = native_symbols;
     node->n_native_symbols = n_native_symbols;
     node->call_conv_raw = call_conv_raw;
-
+    
     /* Add to list head */
     node->next = g_native_symbols_list;
     g_native_symbols_list = node;
@@ -324,6 +324,7 @@ wasm_native_register_natives(const char *module_name,
                              NativeSymbol *native_symbols,
                              uint32 n_native_symbols)
 {
+    printf("symbol natives\n");
     return register_natives(module_name, native_symbols, n_native_symbols, false);
 }
 

@@ -613,7 +613,7 @@ functions_instantiate(const WASMModule *module,
                                      error_buf, error_buf_size))) {
         return NULL;
     }
-    alloc_infos(functions, WASMFunctionT, function_count);
+    alloc_infos(functions, WASMFunctionInstanceT, function_count);
 
     /* instantiate functions from import section */
     function = functions;

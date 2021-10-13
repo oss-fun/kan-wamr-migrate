@@ -1464,7 +1464,7 @@ label_pop_csp_n:
       HANDLE_OP (WASM_OP_SET_GLOBAL_AUX_STACK):
         {
           uint32 aux_stack_top;
-
+          printf("AUX\n");
           read_leb_uint32(frame_ip, frame_ip_end, global_idx);
           bh_assert(global_idx < module->global_count);
           global = globals + global_idx;

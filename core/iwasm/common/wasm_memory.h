@@ -38,6 +38,30 @@ typedef enum Data_Type {
     //wasm_export.h
     wasm_val_tT,
 
+    //wasm_c_api_internal.h
+    wasm_instance_tT,
+    wasm_engine_tT,
+    wasm_store_tT,
+    VectorT,
+    wasm_valtype_tT,
+    wasm_functype_tT,
+    wasm_valtype_vec_tT,
+    wasm_globaltype_tT,
+    wasm_tabletype_tT,
+    wasm_memorytype_tT,
+    wasm_importtype_tT,
+    wasm_byte_vec_tT,
+    wasm_exporttype_tT,
+    wasm_ref_tT,
+    wasm_frame_tT,
+    wasm_trap_tT,
+    wasm_foreign_tT,
+    wasm_module_ex_tT,
+    wasm_func_tT,
+    wasm_global_tT,
+    wasm_table_tT,
+    wasm_memory_tT,
+
     //wasm_exec_env.h
     WASMExecEnvT,
 
@@ -110,8 +134,9 @@ typedef enum Data_Type {
 } Data_Type;
 
 typedef struct Pool_Info {
-    unsigned int p_abs;
+    int p_abs;
     void *p_raw;
+    size_t size;
     Data_Type type;
 } Pool_Info;
 void

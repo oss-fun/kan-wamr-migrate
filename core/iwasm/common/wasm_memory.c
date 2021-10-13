@@ -6,7 +6,18 @@
 #include "wasm_runtime_common.h"
 #include "bh_platform.h"
 #include "mem_alloc.h"
+#include "ems/ems_gc_internal.h"
 #include "wasm_memory.h"
+#include "wasm_exec_env.h"
+#include "wasm_native.h"
+#include "wasm_shared_memory.h"
+#include "wasm_dump.h"
+#include "../interpreter/wasm_opcode.h"
+#include "../interpreter/wasm_runtime.h"
+#include "../interpreter/wasm_loader.h"
+#include "../interpreter/wasm_interp.h"
+#include "../interpreter/wasm.h"
+#include "wasm_c_api.h"
 
 typedef enum Memory_Mode {
     MEMORY_MODE_UNKNOWN = 0,
@@ -24,59 +35,174 @@ static void (*free_func)(void *ptr) = NULL;
 
 static unsigned int global_pool_size;
 
-#define MAX_LIST_SIZE
+#define MAX_LIST_SIZE 512 * 1024
+
 static Pool_Info **root_info = NULL;
 static Pool_Info *pool_list[MAX_LIST_SIZE] = {};
-static unsigned int addr_list_size = 0;
 
-static void (*dump_data[ERRORT])(void *p);
+static void (*dump_data[])(Pool_Info *addr);
 
+static void
+init_dump_func(void)
+{
+    dump_data[charT] = dump_char;
+    dump_data[charTT] = dump_charT;
+    dump_data[uint8T] = dump_uint8;
+    dump_data[uint16T] = dump_uint16;
+    dump_data[uint32T] = dump_uint32;
+    dump_data[uint64T] = dump_uint64;
+    dump_data[gc_heap_tT] = dump_gc_heap_t;
+    dump_data[base_addrT] = dump_base_addr;
+    dump_data[WASIContextT] = dump_WASIContext;
+    dump_data[WASMThreadArgT] = dump_WASMThreadArg;
+    dump_data[ExternRefMapNodeT] = dump_ExternRefMapNode;
+    dump_data[fd_tableT] = dump_fd_table;
+    dump_data[fd_prestatsT] = dump_fd_prestats;
+    dump_data[argv_environ_valuesT] = dump_argv_environ_values;
+    dump_data[uvwasi_tT] = dump_uvwasi_t;
+    dump_data[uvwasi_preopen_tT] = dump_uvwasi_preopen_t;
+    dump_data[wasm_val_tT] = dump_wasm_val_t;
 
-#define CASE_INFOS(data_type) \
-    case data_type##T:\
-        for(i=0;i<size;i++){\
-            info = malloc(sizeof(Pool_Info));\
-            *info = { .p_abs = addr - pool_allocator, .p_raw = addr, .type = type};\
-            pool_list[info.p_abs] = info;\
-            (data_type*)addr++;\
-        }\
+    dump_data[wasm_instance_tT] = dump_wasm_instance_t;
+    dump_data[wasm_engine_tT] = dump_wasm_engine_t;
+    dump_data[wasm_store_tT] = dump_wasm_store_t;
+    dump_data[VectorT] = dump_Vector;
+    dump_data[wasm_valtype_tT] = dump_wasm_valtype_t;
+    dump_data[wasm_functype_tT] = dump_wasm_functype_t;
+    dump_data[wasm_valtype_vec_tT] = dump_wasm_valtype_vec_t;
+    dump_data[wasm_globaltype_tT] = dump_wasm_globaltype_t;
+    dump_data[wasm_tabletype_tT] = dump_wasm_tabletype_t;
+    dump_data[wasm_memorytype_tT] = dump_wasm_memorytype_t;
+    dump_data[wasm_importtype_tT] = dump_wasm_importtype_t;
+    dump_data[wasm_byte_vec_tT] = dump_wasm_byte_vec_t;
+    dump_data[wasm_exporttype_tT] = dump_wasm_exporttype_t;
+    dump_data[wasm_ref_tT] = dump_wasm_ref_t;
+    dump_data[wasm_frame_tT] = dump_wasm_frame_t;
+    dump_data[wasm_trap_tT] = dump_wasm_trap_t;
+    dump_data[wasm_foreign_tT] = dump_wasm_foreign_t;
+    dump_data[wasm_module_ex_tT] = dump_wasm_module_ex_t;
+    dump_data[wasm_func_tT] = dump_wasm_func_t;
+    dump_data[wasm_global_tT] = dump_wasm_global_t;
+    dump_data[wasm_table_tT] = dump_wasm_table_t;
+    dump_data[wasm_memory_tT] = dump_wasm_memory_t;
+
+    dump_data[WASMExecEnvT] = dump_WASMExecEnv;
+    dump_data[NativeSymbolsNodeT] = dump_NativeSymbolsNode;
+    dump_data[WASMModuleCommonT] = dump_WASMModuleCommon;
+    dump_data[WASMModuleInstanceCommonT] = dump_WASMModuleInstanceCommon;
+    dump_data[WASMModuleMemConsumptionT] = dump_WASMModuleMemConsumption;
+    dump_data[WASMModuleInstMemConsumptionT] =
+      dump_WASMModuleInstMemConsumption;
+    dump_data[WASMMemoryInstanceCommonT] = dump_WASMMemoryInstanceCommon;
+    dump_data[WASMSectionT] = dump_WASMSection;
+    dump_data[WASMCApiFrameT] = dump_WASMCApiFrame;
+    dump_data[WASMSharedMemNodeT] = dump_WASMSharedMemNode;
+    dump_data[WASMModuleT] = dump_WASMModule;
+    dump_data[WASMFunctionT] = dump_WASMFunction;
+    dump_data[WASMFunctionTT] = dump_WASMFunctionT;
+    dump_data[WASMGlobalT] = dump_WASMGlobal;
+    dump_data[WASMExportT] = dump_WASMExport;
+    dump_data[V128T] = dump_V128;
+    dump_data[WASMValueT] = dump_WASMValue;
+    dump_data[InitializerExpressionT] = dump_InitializerExpression;
+    dump_data[WASMTypeT] = dump_WASMType;
+    dump_data[WASMTypeTT] = dump_WASMTypeT;
+    dump_data[WASMTableT] = dump_WASMTable;
+    dump_data[WASMMemoryT] = dump_WASMMemory;
+    dump_data[WASMTableImportT] = dump_WASMTableImport;
+    dump_data[WASMMemoryImportT] = dump_WASMMemoryImport;
+    dump_data[WASMFunctionImportT] = dump_WASMFunctionImport;
+    dump_data[WASMGlobalImportT] = dump_WASMGlobalImport;
+    dump_data[WASMImportT] = dump_WASMImport;
+    dump_data[WASMTableSegT] = dump_WASMTableSeg;
+    dump_data[WASMDataSegT] = dump_WASMDataSeg;
+    dump_data[BlockAddrT] = dump_BlockAddr;
+    dump_data[WASIArgumentsT] = dump_WASIArguments;
+    dump_data[StringNodeT] = dump_StringNode;
+    dump_data[BlockTypeT] = dump_BlockType;
+    dump_data[WASMBranchBlockT] = dump_WASMBranchBlock;
+    dump_data[WASMInterpFrameT] = dump_WASMInterpFrame;
+    dump_data[BranchBlockT] = dump_BranchBlock;
+    dump_data[WASMLoaderContextT] = dump_WASMLoaderContext;
+    dump_data[ConstT] = dump_Const;
+    dump_data[WASMModuleInstanceT] = dump_WASMModuleInstance;
+    dump_data[WASMFunctionInstanceT] = dump_WASMFunctionInstance;
+    dump_data[WASMMemoryInstanceT] = dump_WASMMemoryInstance;
+    dump_data[WASMMemoryInstanceTT] = dump_WASMMemoryInstanceT;
+    dump_data[WASMTableInstanceT] = dump_WASMTableInstance;
+    dump_data[WASMTableInstanceTT] = dump_WASMTableInstanceT;
+    dump_data[WASMGlobalInstanceT] = dump_WASMGlobalInstance;
+    dump_data[WASMExportFuncInstanceT] = dump_WASMExportFuncInstance;
+    dump_data[WASMRuntimeFrameT] = dump_WASMRuntimeFrame;
+    dump_data[WASMOpcodeT] = dump_WASMOpcode;
+    dump_data[WASMMiscEXTOpcodeT] = dump_WASMMiscEXTOpcode;
+    dump_data[WASMSimdEXTOpcodeT] = dump_WASMSimdEXTOpcode;
+    dump_data[WASMAtomicEXTOpcodeT] = dump_WASMAtomicEXTOpcode;
+}
+
+#define CASE_INFOS(data_type)                                                 \
+    case data_type##T:                                                        \
+        info = malloc(sizeof(Pool_Info));                                     \
+        info->p_abs = addr - pool_allocator;                                  \
+        info->p_raw = addr;                                                   \
+        info->size = size;                                                    \
+        info->type = type;                                                    \
+        pool_list[info->p_abs] = info;                                        \
         break;
 
-
+void
+dump_runtime(void)
+{
+    int i;
+    init_dump(pool_allocator);
+    init_dump_func();
+    for (i = 0; i < MAX_LIST_SIZE; i++) {
+        if (pool_list[i] != 0) {
+            (*dump_data[pool_list[i]->type])(pool_list[i]);
+        }
+    }
+}
 
 void
 alloc_info(void *addr, Data_Type type)
 {
     Pool_Info *info = malloc(sizeof(Pool_Info));
-    *info = { .p_abs = addr - pool_allocator, .p_raw = addr, .type = type};
-    pool_list[info.p_abs] = info;
+    info->p_abs = addr - pool_allocator;
+
+    info->p_raw = addr;
+
+    info->size = 1;
+
+    info->type = type;
+
+    pool_list[info->p_abs] = info;
 }
 
 void
 alloc_infos(void *addr, Data_Type type, size_t size)
 {
     Pool_Info *info;
-    int i;
+    size_t i;
     switch (type) {
         CASE_INFOS(char)
-        //CASE_INFOS(charTT)
+        //CASE_INFOS(char*)
         CASE_INFOS(uint8)
         CASE_INFOS(uint16)
         CASE_INFOS(uint32)
         CASE_INFOS(uint64)
-        
+
         CASE_INFOS(gc_heap_t)
-        CASE_INFOS(base_addr)
+        //CASE_INFOS(base_addr)
         CASE_INFOS(WASIContext)
-        CASE_INFOS(WASMThreadArg)
-        CASE_INFOS(ExternRefMapNode)
+        //CASE_INFOS(WASMThreadArg)
+        //CASE_INFOS(ExternRefMapNode)
 
-        CASE_INFOS(fd_table)
-        CASE_INFOS(fd_prestats)
-        CASE_INFOS(argv_environ_values)
+        //CASE_INFOS(fd_table)
+        //CASE_INFOS(fd_prestats)
+        //CASE_INFOS(argv_environ_values)
 
-        CASE_INFOS(uvwasi_t)
-        CASE_INFOS(uvwasi_preopen_t)
+        //CASE_INFOS(uvwasi_t)
+        //CASE_INFOS(uvwasi_preopen_t)
 
         CASE_INFOS(wasm_val_t)
         CASE_INFOS(WASMExecEnv)
@@ -95,14 +221,14 @@ alloc_infos(void *addr, Data_Type type, size_t size)
 
         CASE_INFOS(WASMModule)
         CASE_INFOS(WASMFunction)
-        //CASE_INFOS(WASMFunctionTT)
+        //CASE_INFOS(WASMFunction*)
         CASE_INFOS(WASMGlobal)
         CASE_INFOS(WASMExport)
-        //CASE_INFOS(V128T)
-       CASE_INFOS( WASMValue)
+        CASE_INFOS(V128)
+        CASE_INFOS(WASMValue)
         CASE_INFOS(InitializerExpression)
         CASE_INFOS(WASMType)
-        //CASE_INFOS(WASMTypeTT)
+        //CASE_INFOS(WASMType*)
         CASE_INFOS(WASMTable)
         CASE_INFOS(WASMMemory)
         CASE_INFOS(WASMTableImport)
@@ -117,7 +243,7 @@ alloc_infos(void *addr, Data_Type type, size_t size)
         CASE_INFOS(StringNode)
         CASE_INFOS(BlockType)
         CASE_INFOS(WASMBranchBlock)
-    
+
         CASE_INFOS(WASMInterpFrame)
 
         CASE_INFOS(BranchBlock)
@@ -128,9 +254,9 @@ alloc_infos(void *addr, Data_Type type, size_t size)
 
         CASE_INFOS(WASMFunctionInstance)
         CASE_INFOS(WASMMemoryInstance)
-        //CASE_INFOS(WASMMemoryInstanceTT)
+        //CASE_INFOS(WASMMemoryInstance*)
         CASE_INFOS(WASMTableInstance)
-        //CASE_INFOS(WASMTableInstanceTT)
+        //CASE_INFOS(WASMTableInstance*)
         CASE_INFOS(WASMGlobalInstance)
         CASE_INFOS(WASMExportFuncInstance)
         CASE_INFOS(WASMRuntimeFrame)
@@ -139,7 +265,8 @@ alloc_infos(void *addr, Data_Type type, size_t size)
         CASE_INFOS(WASMMiscEXTOpcode)
         CASE_INFOS(WASMSimdEXTOpcode)
         CASE_INFOS(WASMAtomicEXTOpcode)
-
+        default:
+            break;
     }
 }
 
@@ -296,4 +423,5 @@ void
 wasm_runtime_free(void *ptr)
 {
     wasm_runtime_free_internal(ptr);
+    free_info(ptr);
 }
