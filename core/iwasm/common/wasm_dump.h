@@ -145,6 +145,9 @@ dump_WASMTableSeg(Pool_Info *addr);
 void
 dump_WASMDataSeg(Pool_Info *addr);
 void
+dump_WASMDataSegT(Pool_Info *addr);
+
+void
 dump_BlockAddr(Pool_Info *addr);
 void
 dump_WASIArguments(Pool_Info *addr);

@@ -100,6 +100,7 @@ typedef enum Data_Type {
     WASMImportT,
     WASMTableSegT,
     WASMDataSegT,
+    WASMDataSegTT,
     BlockAddrT,
     WASIArgumentsT,
     StringNodeT,

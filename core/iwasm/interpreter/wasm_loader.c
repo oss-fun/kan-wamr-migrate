@@ -2675,7 +2675,7 @@ load_data_segment_section(const uint8 *buf,
                 loader_malloc(total_size, error_buf, error_buf_size))) {
             return false;
         }
-        alloc_infos(module->data_segments, WASMDataSegT, data_seg_count);
+        alloc_infos(module->data_segments, WASMDataSegTT, data_seg_count);
 
         for (i = 0; i < data_seg_count; i++) {
             read_leb_uint32(p, p_end, mem_index);

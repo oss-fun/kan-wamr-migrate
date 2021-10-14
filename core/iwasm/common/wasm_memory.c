@@ -116,6 +116,7 @@ init_dump_func(void)
     dump_data[WASMImportT] = dump_WASMImport;
     dump_data[WASMTableSegT] = dump_WASMTableSeg;
     dump_data[WASMDataSegT] = dump_WASMDataSeg;
+    dump_data[WASMDataSegTT] = dump_WASMDataSegT;
     dump_data[BlockAddrT] = dump_BlockAddr;
     dump_data[WASIArgumentsT] = dump_WASIArguments;
     dump_data[StringNodeT] = dump_StringNode;
@@ -166,6 +167,10 @@ dump_runtime(void)
 void
 alloc_info(void *addr, Data_Type type)
 {
+    if (type == WASMLoaderContextT) {
+        printf("alloc LoaderCtx\n");
+    }
+
     Pool_Info *info = malloc(sizeof(Pool_Info));
     info->p_abs = addr - pool_allocator;
 
@@ -183,9 +188,13 @@ alloc_infos(void *addr, Data_Type type, size_t size)
 {
     Pool_Info *info;
     size_t i;
+
+    if (type == WASMLoaderContextT) {
+        printf("alloc LoaderCtx\n");
+    }
     switch (type) {
         CASE_INFOS(char)
-        //CASE_INFOS(char*)
+        CASE_INFOS(charT)
         CASE_INFOS(uint8)
         CASE_INFOS(uint16)
         CASE_INFOS(uint32)
@@ -221,14 +230,14 @@ alloc_infos(void *addr, Data_Type type, size_t size)
 
         CASE_INFOS(WASMModule)
         CASE_INFOS(WASMFunction)
-        //CASE_INFOS(WASMFunction*)
+        CASE_INFOS(WASMFunctionT)
         CASE_INFOS(WASMGlobal)
         CASE_INFOS(WASMExport)
         CASE_INFOS(V128)
         CASE_INFOS(WASMValue)
         CASE_INFOS(InitializerExpression)
         CASE_INFOS(WASMType)
-        //CASE_INFOS(WASMType*)
+        CASE_INFOS(WASMTypeT)
         CASE_INFOS(WASMTable)
         CASE_INFOS(WASMMemory)
         CASE_INFOS(WASMTableImport)
@@ -238,6 +247,7 @@ alloc_infos(void *addr, Data_Type type, size_t size)
         CASE_INFOS(WASMImport)
         CASE_INFOS(WASMTableSeg)
         CASE_INFOS(WASMDataSeg)
+        CASE_INFOS(WASMDataSegT)
         CASE_INFOS(BlockAddr)
         CASE_INFOS(WASIArguments)
         CASE_INFOS(StringNode)
@@ -254,9 +264,9 @@ alloc_infos(void *addr, Data_Type type, size_t size)
 
         CASE_INFOS(WASMFunctionInstance)
         CASE_INFOS(WASMMemoryInstance)
-        //CASE_INFOS(WASMMemoryInstance*)
+        CASE_INFOS(WASMMemoryInstanceT)
         CASE_INFOS(WASMTableInstance)
-        //CASE_INFOS(WASMTableInstance*)
+        CASE_INFOS(WASMTableInstanceT)
         CASE_INFOS(WASMGlobalInstance)
         CASE_INFOS(WASMExportFuncInstance)
         CASE_INFOS(WASMRuntimeFrame)
@@ -274,6 +284,9 @@ void
 free_info(void *addr)
 {
     if (pool_list[addr - pool_allocator] != 0) {
+        if (pool_list[addr - pool_allocator]->type == WASMLoaderContextT) {
+            printf("free LoaderCtx\n");
+        }
         free(pool_list[addr - pool_allocator]);
         pool_list[addr - pool_allocator] = 0;
     }

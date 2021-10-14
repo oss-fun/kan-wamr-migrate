@@ -697,7 +697,7 @@ ALLOC_FRAME(WASMExecEnv *exec_env, uint32 size, WASMInterpFrame *prev_frame)
 
     if (frame) {
         frame->prev_frame = prev_frame;
-        alloc_info(frame, WASMInterpFrameT);
+        alloc_infos(frame, WASMInterpFrameT, size);
 #if WASM_ENABLE_PERF_PROFILING != 0
         frame->time_started = os_time_get_boot_microsecond();
 #endif
