@@ -167,7 +167,7 @@ dump_WASIContext(Pool_Info *addr)
     int i;
     HEADER(WASIContext);
 
-    for (i = 0; i < addr->size; i++, node = (WASIContext *)addr->raw + i) {
+    for (i = 0; i < addr->size; i++, node = (WASIContext *)addr->p_raw + i) {
         int p_abs = addr->p_abs + i * sizeof(WASIContext);
         fwrite(&p_abs, sizeof(int), 1, fp);
 
@@ -189,9 +189,9 @@ dump_WASIContext(Pool_Info *addr)
             fwrite(&node->argv_environ->environ_buf_size, sizeof(uint64), 1,
                    fp);
             //   char **environ_list;
-            DUMP_PTR(node->argv_environ, environ_list);
+            DUMP_PTR(node->argv_environ->environ_list);
             //   size_t environ_count;
-            fwrite(&node->argv_environ->environ_count);
+            fwrite(&node->argv_environ->environ_count,sizeof(uint64),1,fp);
         }
 
         //char *argv_buf;
@@ -475,8 +475,6 @@ dump_WASMExecEnv(Pool_Info *addr)
 
     //#if WASM_ENABLE_INTERP != 0 && WASM_ENABLE_FAST_INTERP == 0
     //BlockAddr block_addr_cache[BLOCK_ADDR_CACHE_SIZE][BLOCK_ADDR_CONFLICT_SIZE];
-    BLOCK_ADDR_CACHE_SIZE;
-    BLOCK_ADDR_CONFLICT_SIZE;
     for (i = 0; i < BLOCK_ADDR_CACHE_SIZE; i++) {
         for (j = 0; j < BLOCK_ADDR_CONFLICT_SIZE; j++) {
             // const uint8 *start_addr;
@@ -1480,13 +1478,17 @@ dump_StringNode(Pool_Info *addr)
 {
     int i;
     HEADER(StringNode);
+    for (i = 0; i < addr->size; i++, node = (StringNode *)addr->p_raw + i) {
+        int p_abs = addr->p_abs + i * sizeof(StringNode);
+        fwrite(&p_abs, sizeof(int), 1, fp);
 
-    //size
-    fwrite(&addr->size, sizeof(int), 1, fp);
-    //struct StringNode *next;
-    DUMP_PTR(node->next);
-    //char *str;
-    fwrite(node->str, sizeof(char), addr->size, fp);
+        //size
+        fwrite(&addr->size, sizeof(int), 1, fp);
+        //struct StringNode *next;
+        DUMP_PTR(node->next);
+        //char *str;
+        fwrite(node->str, sizeof(char), addr->size, fp);
+    }
 }
 void
 dump_BlockType(Pool_Info *addr)
@@ -1504,6 +1506,7 @@ dump_WASMBranchBlock(Pool_Info *addr) //要チェック アロケートはされ
          i++, node = (WASMBranchBlock *)addr->p_raw + i) {
         int p_abs = addr->p_abs + i * sizeof(WASMBranchBlock);
         fwrite(&p_abs, sizeof(int), 1, fp);
+
         // uint8 *begin_addr;
         DUMP_PTR(node->begin_addr);
         // uint8 *target_addr;
@@ -1658,76 +1661,82 @@ dump_WASMModuleInstance(Pool_Info *addr)
     int i;
     HEADER(WASMModuleInstance);
 
-    // uint32 module_type;
-    fwrite(&node->module_type, sizeof(uint32), 1, fp);
+    for (i = 0; i < addr->size;
+         i++, node = (WASMModuleInstance *)addr->p_raw + i) {
+        int p_abs = addr->p_abs + i * sizeof(WASMModuleInstance);
+        fwrite(&p_abs, sizeof(int), 1, fp);
 
-    // uint32 memory_count;
-    fwrite(&node->memory_count, sizeof(uint32), 1, fp);
-    // uint32 table_count;
-    fwrite(&node->table_count, sizeof(uint32), 1, fp);
-    // uint32 global_count;
-    fwrite(&node->global_count, sizeof(uint32), 1, fp);
-    // uint32 function_count;
-    fwrite(&node->function_count, sizeof(uint32), 1, fp);
+        // uint32 module_type;
+        fwrite(&node->module_type, sizeof(uint32), 1, fp);
 
-    // uint32 export_func_count;
-    fwrite(&node->export_func_count, sizeof(uint32), 1, fp);
+        // uint32 memory_count;
+        fwrite(&node->memory_count, sizeof(uint32), 1, fp);
+        // uint32 table_count;
+        fwrite(&node->table_count, sizeof(uint32), 1, fp);
+        // uint32 global_count;
+        fwrite(&node->global_count, sizeof(uint32), 1, fp);
+        // uint32 function_count;
+        fwrite(&node->function_count, sizeof(uint32), 1, fp);
 
-    // WASMMemoryInstance **memories;
-    DUMP_PTR(node->memories);
-    // WASMTableInstance **tables;
-    DUMP_PTR(node->tables);
-    // WASMGlobalInstance *globals;
-    DUMP_PTR(node->globals);
-    // WASMFunctionInstance *functions;
-    DUMP_PTR(node->functions);
+        // uint32 export_func_count;
+        fwrite(&node->export_func_count, sizeof(uint32), 1, fp);
 
-    // WASMExportFuncInstance *export_functions;
-    DUMP_PTR(node->export_functions);
+        // WASMMemoryInstance **memories;
+        DUMP_PTR(node->memories);
+        // WASMTableInstance **tables;
+        DUMP_PTR(node->tables);
+        // WASMGlobalInstance *globals;
+        DUMP_PTR(node->globals);
+        // WASMFunctionInstance *functions;
+        DUMP_PTR(node->functions);
 
-    // WASMMemoryInstance *default_memory;
-    DUMP_PTR(node->default_memory);
-    // WASMTableInstance *default_table;
-    DUMP_PTR(node->default_table);
-    // uint8 *global_data;
-    DUMP_PTR(node->global_data);
+        // WASMExportFuncInstance *export_functions;
+        DUMP_PTR(node->export_functions);
 
-    // WASMFunctionInstance *start_function;
-    DUMP_PTR(node->start_function);
-    // WASMFunctionInstance *malloc_function;
-    DUMP_PTR(node->malloc_function);
-    // WASMFunctionInstance *free_function;
-    DUMP_PTR(node->free_function);
-    // WASMFunctionInstance *retain_function;
-    DUMP_PTR(node->retain_function);
+        // WASMMemoryInstance *default_memory;
+        DUMP_PTR(node->default_memory);
+        // WASMTableInstance *default_table;
+        DUMP_PTR(node->default_table);
+        // uint8 *global_data;
+        DUMP_PTR(node->global_data);
 
-    // WASMModule *module;
-    DUMP_PTR(node->module);
+        // WASMFunctionInstance *start_function;
+        DUMP_PTR(node->start_function);
+        // WASMFunctionInstance *malloc_function;
+        DUMP_PTR(node->malloc_function);
+        // WASMFunctionInstance *free_function;
+        DUMP_PTR(node->free_function);
+        // WASMFunctionInstance *retain_function;
+        DUMP_PTR(node->retain_function);
+
+        // WASMModule *module;
+        DUMP_PTR(node->module);
 
 #if WASM_ENABLE_LIBC_WASI != 0
-    WASIContext *wasi_ctx;
-    DUMP_PTR(node->wasi_ctx);
+        //WASIContext *wasi_ctx;
+        DUMP_PTR(node->wasi_ctx);
 #endif
 
-    // WASMExecEnv *exec_env_singleton;
-    DUMP_PTR(node->exec_env_singleton);
+        // WASMExecEnv *exec_env_singleton;
+        DUMP_PTR(node->exec_env_singleton);
 
-    // uint32 temp_ret;
-    fwrite(&node->temp_ret, sizeof(uint32), 1, fp);
-    // uint32 llvm_stack;
-    fwrite(&node->llvm_stack, sizeof(uint32), 1, fp);
+        // uint32 temp_ret;
+        fwrite(&node->temp_ret, sizeof(uint32), 1, fp);
+        // uint32 llvm_stack;
+        fwrite(&node->llvm_stack, sizeof(uint32), 1, fp);
 
-    // uint32 default_wasm_stack_size;
-    fwrite(&node->default_wasm_stack_size, sizeof(uint32), 1, fp);
+        // uint32 default_wasm_stack_size;
+        fwrite(&node->default_wasm_stack_size, sizeof(uint32), 1, fp);
 
-    /* The exception buffer of wasm interpreter for current thread. */
-    // char cur_exception[128];
-    fwrite(node->cur_exception, sizeof(char), 128, fp);
+        /* The exception buffer of wasm interpreter for current thread. */
+        // char cur_exception[128];
+        fwrite(node->cur_exception, sizeof(char), 128, fp);
 
-    /* The custom data that can be set/get by
+        /* The custom data that can be set/get by
      * wasm_set_custom_data/wasm_get_custom_data */
-    // void *custom_data;
-    DUMP_PTR(node->custom_data);
+        // void *custom_data;
+        DUMP_PTR(node->custom_data);
+    }
 }
 
 void
@@ -1741,86 +1750,235 @@ dump_WASMFunctionInstance(Pool_Info *addr)
         int p_abs = addr->p_abs + i * sizeof(WASMFunctionInstance);
         fwrite(&p_abs, sizeof(int), 1, fp);
 
-        /* whether it is import function or WASM function */
-        bool is_import_func;
-        /* parameter count */
-        uint16 param_count;
-        /* local variable count, 0 for import function */
-        uint16 local_count;
-        /* cell num of parameters */
-        uint16 param_cell_num;
-        /* cell num of return type */
-        uint16 ret_cell_num;
-        /* cell num of local variables, 0 for import function */
-        uint16 local_cell_num;
+        // bool is_import_func;
+        fwrite(&node->is_import_func, sizeof(bool), 1, fp);
+        // uint16 param_count;
+        fwrite(&node->param_count, sizeof(uint16), 1, fp);
+        // uint16 local_count;
+        fwrite(&node->local_count, sizeof(uint16), 1, fp);
+        // uint16 param_cell_num;
+        fwrite(&node->param_cell_num, sizeof(uint16), 1, fp);
+        // uint16 ret_cell_num;
+        fwrite(&node->ret_cell_num, sizeof(uint16), 1, fp);
+        // uint16 local_cell_num;
+        fwrite(&node->local_cell_num, sizeof(uint16), 1, fp);
 #if WASM_ENABLE_FAST_INTERP != 0
         /* cell num of consts */
         uint16 const_cell_num;
 #endif
-        uint16 *local_offsets;
-        /* parameter types */
-        uint8 *param_types;
-        /* local types, NULL for import function */
-        uint8 *local_types;
-        union {
+        // uint16 *local_offsets;
+        DUMP_PTR(node->local_offsets);
+        // uint8 *param_types;
+        DUMP_PTR(node->param_types);
+        // uint8 *local_types;
+        DUMP_PTR(node->local_types);
+        /*union {
             WASMFunctionImport *func_import;
             WASMFunction *func;
-        } u;
+        } u;*/
+        DUMP_PTR(node->u.func);
     }
 }
+
 void
 dump_WASMMemoryInstance(Pool_Info *addr)
 {
     int i;
+    HEADER(WASMMemoryInstance);
+
+    for (i = 0; i < addr->size;
+         i++, node = (WASMMemoryInstance *)addr->p_raw + i) {
+        int p_abs = addr->p_abs + i * sizeof(WASMMemoryInstance);
+        fwrite(&p_abs, sizeof(int), 1, fp);
+
+        // uint32 module_type;
+        fwrite(&node->module_type, sizeof(uint32), 1, fp);
+        // bool is_shared;
+        fwrite(&node->is_shared, sizeof(bool), 1, fp);
+        // uint32 num_bytes_per_page;
+        fwrite(&node->num_bytes_per_page, sizeof(uint32), 1, fp);
+        // uint32 cur_page_count;
+        fwrite(&node->cur_page_count, sizeof(uint32), 1, fp);
+        // uint32 max_page_count;
+        fwrite(&node->max_page_count, sizeof(uint32), 1, fp);
+
+        // uint8 *heap_data;
+        DUMP_PTR(node->heap_data);
+        // uint8 *heap_data_end;
+        DUMP_PTR(node->heap_data_end);
+        // void *heap_handle;
+        DUMP_PTR(node->heap_handle);
+
+        //uint8 *memory_data_end;
+        DUMP_PTR(node->memory_data_end);
+
+        /* Memory data begin address, the layout is: memory data + heap data
+       Note: when memory is re-allocated, the heap data and memory data
+             must be copied to new memory also. */
+        //uint8 *memory_data;
+        DUMP_PTR(node->memory_data);
+    }
 }
 void
 dump_WASMMemoryInstanceT(Pool_Info *addr)
 {
     int i;
+    fputc(WASMMemoryInstanceTT, fp);
+    fwrite(&addr->size, sizeof(size_t), 1, fp);
+    for (i = 0; i < addr->size; i++) {
+        int p_abs = addr->p_abs + i * sizeof(WASMMemoryInstance *);
+        fwrite(&p_abs, sizeof(int), 1, fp);
+
+        DUMP_PTR(addr->p_raw + i);
+    }
 }
 void
 dump_WASMTableInstance(Pool_Info *addr)
 {
     int i;
+    HEADER(WASMTableInstance);
+    for (i = 0; i < addr->size;
+         i++, node = (WASMTableInstance *)addr->p_raw + i) {
+        int p_abs = addr->p_abs + i * sizeof(WASMTableInstance);
+        fwrite(&p_abs, sizeof(int), 1, fp);
+
+        // uint8 elem_type;
+        fwrite(&node->elem_type, sizeof(uint8), 1, fp);
+        // uint32 cur_size;
+        fwrite(&node->cur_size, sizeof(uint32), 1, fp);
+        // uint32 max_size;
+        fwrite(&node->max_size, sizeof(uint32), 1, fp);
+        // uint8 base_addr[1];
+        fwrite(node->base_addr, sizeof(uint32), addr->size / sizeof(uint32),
+               fp);
+    }
 }
 void
 dump_WASMTableInstanceT(Pool_Info *addr)
 {
     int i;
+    fputc(WASMTableInstanceTT, fp);
+    fwrite(&addr->size, sizeof(size_t), 1, fp);
+    for (i = 0; i < addr->size; i++) {
+        int p_abs = addr->p_abs + i * sizeof(WASMTableInstance *);
+        fwrite(&p_abs, sizeof(int), 1, fp);
+
+        DUMP_PTR(addr->p_raw + i);
+    }
 }
 void
 dump_WASMGlobalInstance(Pool_Info *addr)
 {
     int i;
+    HEADER(WASMGlobalInstance);
+
+    for (i = 0; i < addr->size;
+         i++, node = (WASMGlobalInstance *)addr->p_raw + i) {
+        int p_abs = addr->p_abs + i * sizeof(WASMGlobalInstance);
+        fwrite(&p_abs, sizeof(int), 1, fp);
+
+        // uint8 type;
+        fwrite(&node->type, sizeof(uint8), 1, fp);
+        // bool is_mutable;
+        fwrite(&node->is_mutable, sizeof(bool), 1, fp);
+        // uint32 data_offset;
+        fwrite(&node->data_offset, sizeof(uint32), 1, fp);
+        // WASMValue initial_value;
+        switch (node->type) {
+            /*
+                int32 i32;
+                uint32 u32;
+                int64 i64;
+                uint64 u64;
+                float32 f32;
+                float64 f64;
+                */
+            case INIT_EXPR_TYPE_I32_CONST:
+            case INIT_EXPR_TYPE_I64_CONST:
+            case INIT_EXPR_TYPE_F32_CONST:
+            case INIT_EXPR_TYPE_F64_CONST:
+                fwrite(&node->initial_value.i64, sizeof(uint64), 1, fp);
+                break;
+
+            //V128 v128;
+            case INIT_EXPR_TYPE_V128_CONST:
+                /*
+                        int8 i8x16[16];
+                        int16 i16x8[8];
+                        int32 i32x8[4];
+                        int64 i64x2[2];
+                        float32 f32x4[4];
+                        float64 f64x2[2];
+                        */
+                fwrite(&node->initial_value.v128.f32x4, sizeof(float64), 2,
+                       fp);
+                break;
+
+            //uint32 ref_index;
+            case INIT_EXPR_TYPE_FUNCREF_CONST:
+            case INIT_EXPR_TYPE_REFNULL_CONST:
+                fwrite(&node->initial_value.ref_index, sizeof(uint32), 1, fp);
+                break;
+
+            //uint32 global_index;
+            case INIT_EXPR_TYPE_GET_GLOBAL:
+                fwrite(&node->initial_value.global_index, sizeof(uint32), 1,
+                       fp);
+                break;
+
+            //uintptr_t addr;
+            default:
+                fwrite(&node->initial_value.addr, sizeof(uintptr_t), 1, fp);
+                break;
+        }
+    }
 }
 void
 dump_WASMExportFuncInstance(Pool_Info *addr)
 {
     int i;
+    HEADER(WASMExportFuncInstance);
+
+    for (i = 0; i < addr->size;
+         i++, node = (WASMExportFuncInstance *)addr->p_raw + i) {
+        int p_abs = addr->p_abs + i * sizeof(WASMExportFuncInstance);
+        fwrite(&p_abs, sizeof(int), 1, fp);
+
+        //     char *name;
+        DUMP_PTR(node->name);
+        //     WASMFunctionInstance *function;
+        DUMP_PTR(node->function);
+    }
 }
+
 void
 dump_WASMRuntimeFrame(Pool_Info *addr)
 {
     int i;
+    printf("Bug\n");
 }
 
 void
 dump_WASMOpcode(Pool_Info *addr)
 {
     int i;
+    // enum
 }
 void
 dump_WASMMiscEXTOpcode(Pool_Info *addr)
 {
     int i;
+    // enum
 }
 void
 dump_WASMSimdEXTOpcode(Pool_Info *addr)
 {
     int i;
+    // enum
 }
 void
 dump_WASMAtomicEXTOpcode(Pool_Info *addr)
 {
     int i;
+    // enum
 }
