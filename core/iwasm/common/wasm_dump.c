@@ -29,7 +29,10 @@ static unsigned long base;
 void
 init_dump(void *addr)
 {
-    fp = fopen("dump.img", "wb");
+    if((fp = fopen("dump.img", "wb"))==NULL){
+        printf("file open error\n");
+        exit(1);
+    }
     base = (unsigned long)addr;
 }
 
@@ -51,11 +54,13 @@ dump_charT(Pool_Info *addr)
 {
     int i;
     // skip
+    printf("charTTTTT\n");
     fputc(charTT, fp);
     fwrite(&addr->size, sizeof(size_t), 1, fp);
     for (i = 0; i < addr->size; i++) {
         int p_abs = addr->p_abs + i * sizeof(char *);
         fwrite(&p_abs, sizeof(int), 1, fp);
+
         DUMP_PTR(addr->p_raw + i);
     }
 }
@@ -516,6 +521,8 @@ void
 dump_NativeSymbolsNode(Pool_Info *addr)
 {
     int i;
+
+    printf("native symbol\n");
     HEADER(NativeSymbolsNode);
     for (i = 0; i < addr->size;
          i++, node = (NativeSymbolsNode *)addr->p_raw + i) {

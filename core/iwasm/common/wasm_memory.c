@@ -159,6 +159,7 @@ dump_runtime(void)
     init_dump_func();
     for (i = 0; i < MAX_LIST_SIZE; i++) {
         if (pool_list[i] != 0) {
+            printf("dump:[%d]\n",pool_list[i]->type);
             (*dump_data[pool_list[i]->type])(pool_list[i]);
         }
     }

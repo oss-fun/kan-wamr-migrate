@@ -905,6 +905,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
   uint8 local_type, *global_addr;
   uint32 cache_index, type_index, cell_num;
   uint8 value_type;
+  uint32 migr_count=0;
 
 #if WASM_ENABLE_LABELS_AS_VALUES != 0
   #define HANDLE_OPCODE(op) &&HANDLE_##op
@@ -915,6 +916,10 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
 #if WASM_ENABLE_LABELS_AS_VALUES == 0
   while (frame_ip < frame_ip_end) {
     opcode = *frame_ip++;
+    migr_count++;
+    if(migr_count==500){
+      dump_runtime();
+    }
     switch (opcode) {
 #else
       FETCH_OPCODE_AND_DISPATCH ();

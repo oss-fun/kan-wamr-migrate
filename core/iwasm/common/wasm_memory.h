@@ -141,6 +141,8 @@ typedef struct Pool_Info {
     Data_Type type;
 } Pool_Info;
 void
+dump_runtime(void);
+void
 alloc_info(void *addr, Data_Type type);
 void
 alloc_infos(void *addr, Data_Type type, size_t size);
