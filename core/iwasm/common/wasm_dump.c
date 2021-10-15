@@ -164,14 +164,45 @@ dump_base_addr(Pool_Info *addr)
 void
 dump_WASIContext(Pool_Info *addr)
 {
-    // skip
-    //struct fd_table *curfds;
-    //struct fd_prestats *prestats;
-    //struct argv_environ_values *argv_environ;
-    //char *argv_buf;
-    //char **argv_list;
-    //char *env_buf;
-    //char **env_list;
+    int i;
+    HEADER(WASIContext);
+
+    for (i = 0; i < addr->size; i++, node = (WASIContext *)addr->raw + i) {
+        int p_abs = addr->p_abs + i * sizeof(WASIContext);
+        fwrite(&p_abs, sizeof(int), 1, fp);
+
+        //struct fd_table *curfds;
+        //struct fd_prestats *prestats;
+        //struct argv_environ_values *argv_environ;
+        {
+            //   const char *argv_buf;
+            DUMP_PTR(node->argv_environ->argv_buf);
+            //   size_t argv_buf_size;
+            fwrite(&node->argv_environ->argv_buf_size, sizeof(uint64), 1, fp);
+            //   char **argv_list;
+            DUMP_PTR(node->argv_environ->argv_list);
+            //   size_t argc;
+            fwrite(&node->argv_environ->argc, sizeof(uint64), 1, fp);
+            //   char *environ_buf;
+            DUMP_PTR(node->argv_environ->environ_buf);
+            //   size_t environ_buf_size;
+            fwrite(&node->argv_environ->environ_buf_size, sizeof(uint64), 1,
+                   fp);
+            //   char **environ_list;
+            DUMP_PTR(node->argv_environ, environ_list);
+            //   size_t environ_count;
+            fwrite(&node->argv_environ->environ_count);
+        }
+
+        //char *argv_buf;
+        DUMP_PTR(node->argv_buf);
+        //char **argv_list;
+        DUMP_PTR(node->argv_list);
+        //char *env_buf;
+        DUMP_PTR(node->env_buf);
+        //char **env_list;
+        DUMP_PTR(node->env_list);
+    }
 }
 
 void
@@ -777,8 +808,29 @@ dump_WASMModule(Pool_Info *addr) // 要チェック
         DUMP_PTR(node->const_str_list);
 
 #if WASM_ENABLE_LIBC_WASI != 0
-        /*WASIArguments wasi_args;
-    bool is_wasi_module;*/
+        WASIArguments wasi_args;
+        {
+            // const char **dir_list;
+            DUMP_PTR(node->wasi_args.dir_list);
+            // uint32 dir_count;
+            fwrite(&node->wasi_args.dir_count, sizeof(uint32), 1, fp);
+            // const char **map_dir_list;
+            DUMP_PTR(node->wasi_args.map_dir_list);
+            // uint32 map_dir_count;
+            fwrite(&node->wasi_args.dir_count, sizeof(uint32), 1, fp);
+            // const char **env;
+            DUMP_PTR(node->wasi_args.env);
+            // uint32 env_count;
+            fwrite(&node->wasi_args.env_count, sizeof(uint32), 1, fp);
+            // char **argv;
+            DUMP_PTR(node->wasi_args.argv);
+            // uint32 argc;
+            fwrite(&node->wasi_args.argc, sizeof(uint32), 1, fp);
+            // int stdio[3];
+            fwrite(node->wasi_args.stdio, sizeof(int), 3, fp);
+        }
+        bool is_wasi_module;
+        fwrite(&node->is_wasi_module, sizeof(bool), 1, fp);
 #endif
     }
 }
@@ -1218,12 +1270,6 @@ dump_WASMImport(Pool_Info *addr)
                        sizeof(float64), 2, fp);
                 // bool is_linked;
                 fwrite(&node->u.global.is_linked, sizeof(bool), 1, fp);
-#if WASM_ENABLE_MULTI_MODULE != 0
-                /* imported function pointer after linked */
-                /* TODO: remove if not needed */
-                WASMModule *import_module;
-                WASMGlobal *import_global_linked;
-#endif
                 break;
 
             default:
@@ -1419,7 +1465,15 @@ dump_WASIArguments(Pool_Info *addr)
 {
     int i;
     // maybe skip
-    // argvだけcheckpoint
+    const char **dir_list;
+    uint32 dir_count;
+    const char **map_dir_list;
+    uint32 map_dir_count;
+    const char **env;
+    uint32 env_count;
+    char **argv;
+    uint32 argc;
+    int stdio[3];
 }
 void
 dump_StringNode(Pool_Info *addr)
@@ -1652,6 +1706,7 @@ dump_WASMModuleInstance(Pool_Info *addr)
 
 #if WASM_ENABLE_LIBC_WASI != 0
     WASIContext *wasi_ctx;
+    DUMP_PTR(node->wasi_ctx);
 #endif
 
     // WASMExecEnv *exec_env_singleton;
