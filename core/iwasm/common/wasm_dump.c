@@ -1164,10 +1164,7 @@ dump_WASMImport(Pool_Info *addr)
                 DUMP_PTR(node->u.function.attachment); // 要チェック
                 // bool call_conv_raw;
                 fwrite(&node->u.function.call_conv_raw, sizeof(bool), 1, fp);
-#if WASM_ENABLE_MULTI_MODULE != 0
-                WASMModule *import_module;
-                WASMFunction *import_func_linked;
-#endif
+
                 //bool call_conv_wasm_c_api;
                 fwrite(&node->u.function.call_conv_wasm_c_api, sizeof(bool), 1,
                        fp);
@@ -1187,10 +1184,6 @@ dump_WASMImport(Pool_Info *addr)
                 fwrite(&node->u.table.max_size, sizeof(uint32), 1, fp);
                 // bool possible_grow;
                 fwrite(&node->u.table.possible_grow, sizeof(bool), 1, fp);
-#if WASM_ENABLE_MULTI_MODULE != 0
-                WASMModule *import_module;
-                WASMTable *import_table_linked;
-#endif
                 break;
 
             case IMPORT_KIND_MEMORY:
@@ -1203,10 +1196,6 @@ dump_WASMImport(Pool_Info *addr)
                 fwrite(&node->u.memory.init_page_count, sizeof(uint32), 1, fp);
                 // uint32 max_page_count;
                 fwrite(&node->u.memory.max_page_count, sizeof(uint32), 1, fp);
-#if WASM_ENABLE_MULTI_MODULE != 0
-                WASMModule *import_module;
-                WASMMemory *import_memory_linked;
-#endif
                 break;
 
             case IMPORT_KIND_GLOBAL:
@@ -1226,6 +1215,7 @@ dump_WASMImport(Pool_Info *addr)
         }
     }
 }
+
 void
 dump_WASMTableSeg(Pool_Info *addr)
 {
