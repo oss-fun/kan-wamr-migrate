@@ -58,8 +58,9 @@ malloc_internal(uint64 size)
     if (size < UINT32_MAX && (mem = wasm_runtime_malloc((uint32)size))) {
         memset(mem, 0, size);
     }
-    printf("malloc_internal\n");
-
+    if (size < UINT32_MAX && size > 0) {
+        alloc_info(mem, DUMMYT);
+    }
     return mem;
 }
 
@@ -83,6 +84,7 @@ failed:                                                                       \
         if (!(vector_p = malloc_internal(sizeof(*(vector_p))))) {             \
             goto failed;                                                      \
         }                                                                     \
+        alloc_info(vector_p, DUMMYT);                                         \
                                                                               \
         init_func(vector_p, ##__VA_ARGS__);                                   \
         if (vector_p->size && !vector_p->data) {                              \
@@ -280,7 +282,7 @@ wasm_engine_delete_internal(wasm_engine_t *engine)
 {
     if (engine) {
         DEINIT_VEC(engine->stores, wasm_store_vec_delete);
-        #ifdef __FREE_DEBUG
+#ifdef __FREE_DEBUG
         printf("wasm_c_api:284\n");
 #endif
         wasm_runtime_free(engine);
@@ -468,13 +470,13 @@ wasm_store_delete(wasm_store_t *store)
     DEINIT_VEC(store->instances, wasm_instance_vec_delete);
     if (store->foreigns) {
         bh_vector_destroy(store->foreigns);
-        #ifdef __FREE_DEBUG
+#ifdef __FREE_DEBUG
         printf("wasm_c_api:472\n");
 #endif
         wasm_runtime_free(store->foreigns);
     }
 #ifdef __FREE_DEBUG
-        printf("wasm_c_api:477\n");
+    printf("wasm_c_api:477\n");
 #endif
     wasm_runtime_free(store);
 
@@ -527,7 +529,7 @@ void
 wasm_valtype_delete(wasm_valtype_t *val_type)
 {
     if (val_type) {
-        #ifdef __FREE_DEBUG
+#ifdef __FREE_DEBUG
         printf("wasm_c_api:531\n");
 #endif
         wasm_runtime_free(val_type);
@@ -687,7 +689,7 @@ wasm_functype_delete(wasm_functype_t *func_type)
     DEINIT_VEC(func_type->params, wasm_valtype_vec_delete);
     DEINIT_VEC(func_type->results, wasm_valtype_vec_delete);
 #ifdef __FREE_DEBUG
-        printf("wasm_c_api:690\n");
+    printf("wasm_c_api:690\n");
 #endif
     wasm_runtime_free(func_type);
 }
@@ -763,7 +765,7 @@ wasm_globaltype_delete(wasm_globaltype_t *global_type)
         global_type->val_type = NULL;
     }
 #ifdef __FREE_DEBUG
-        printf("wasm_c_api:766\n");
+    printf("wasm_c_api:766\n");
 #endif
     wasm_runtime_free(global_type);
 }
@@ -884,7 +886,7 @@ wasm_tabletype_delete(wasm_tabletype_t *table_type)
         table_type->val_type = NULL;
     }
 #ifdef __FREE_DEBUG
-        printf("wasm_c_api:887\n");
+    printf("wasm_c_api:887\n");
 #endif
     wasm_runtime_free(table_type);
 }
@@ -951,7 +953,7 @@ void
 wasm_memorytype_delete(wasm_memorytype_t *memory_type)
 {
     if (memory_type) {
-        #ifdef __FREE_DEBUG
+#ifdef __FREE_DEBUG
         printf("wasm_c_api:955\n");
 #endif
         wasm_runtime_free(memory_type);
@@ -1126,8 +1128,8 @@ wasm_importtype_delete(own wasm_importtype_t *import_type)
     DEINIT_VEC(import_type->module_name, wasm_byte_vec_delete);
     DEINIT_VEC(import_type->name, wasm_byte_vec_delete);
     wasm_externtype_delete(import_type->extern_type);
-    #ifdef __FREE_DEBUG
-        printf("wasm_c_api:1130\n");
+#ifdef __FREE_DEBUG
+    printf("wasm_c_api:1130\n");
 #endif
     wasm_runtime_free(import_type);
 }
@@ -1269,7 +1271,7 @@ wasm_exporttype_delete(wasm_exporttype_t *export_type)
     wasm_externtype_delete(export_type->extern_type);
 
 #ifdef __FREE_DEBUG
-        printf("wasm_c_api:1272\n");
+    printf("wasm_c_api:1272\n");
 #endif
     wasm_runtime_free(export_type);
 }
@@ -1297,7 +1299,7 @@ void
 wasm_val_delete(wasm_val_t *v)
 {
     if (v) {
-        #ifdef __FREE_DEBUG
+#ifdef __FREE_DEBUG
         printf("wasm_c_api:1301\n");
 #endif
         wasm_runtime_free(v);
@@ -1422,8 +1424,8 @@ wasm_ref_new_internal(wasm_store_t *store,
 
         if (!(bh_vector_get(ref->store->foreigns, ref->ref_idx_rt, &foreign))
             || !foreign) {
-                #ifdef __FREE_DEBUG
-        printf("wasm_c_api:1426\n");
+#ifdef __FREE_DEBUG
+            printf("wasm_c_api:1426\n");
 #endif
             wasm_runtime_free(ref);
             return NULL;
@@ -1471,7 +1473,7 @@ wasm_ref_delete(own wasm_ref_t *ref)
         }
     }
 #ifdef __FREE_DEBUG
-        printf("wasm_c_api:1474\n");
+    printf("wasm_c_api:1474\n");
 #endif
     wasm_runtime_free(ref);
 }
@@ -1596,7 +1598,7 @@ void
 wasm_frame_delete(own wasm_frame_t *frame)
 {
     if (frame) {
-        #ifdef __FREE_DEBUG
+#ifdef __FREE_DEBUG
         printf("wasm_c_api:1600\n");
 #endif
         wasm_runtime_free(frame);
@@ -1755,7 +1757,7 @@ wasm_trap_delete(wasm_trap_t *trap)
     DEINIT_VEC(trap->message, wasm_byte_vec_delete);
     /* reuse frames of WASMModuleInstance, do not free it here */
 #ifdef __FREE_DEBUG
-        printf("wasm_c_api:1758\n");
+    printf("wasm_c_api:1758\n");
 #endif
     wasm_runtime_free(trap);
 }
@@ -1820,14 +1822,14 @@ wasm_trap_trace(const wasm_trap_t *trap, own wasm_frame_vec_t *out)
 failed:
     for (i = 0; i < out->num_elems; i++) {
         if (out->data[i]) {
-            #ifdef __FREE_DEBUG
-        printf("wasm_c_api:1824\n");
+#ifdef __FREE_DEBUG
+            printf("wasm_c_api:1824\n");
 #endif
             wasm_runtime_free(out->data[i]);
         }
     }
 #ifdef __FREE_DEBUG
-        printf("wasm_c_api:1830\n");
+    printf("wasm_c_api:1830\n");
 #endif
     wasm_runtime_free(out->data);
 }
@@ -1866,7 +1868,7 @@ wasm_foreign_new(wasm_store_t *store)
     foreign->kind = WASM_REF_foreign;
     foreign->foreign_idx_rt = (uint32)bh_vector_size(store->foreigns);
     if (!(bh_vector_append(store->foreigns, &foreign))) {
-        #ifdef __FREE_DEBUG
+#ifdef __FREE_DEBUG
         printf("wasm_c_api:1870\n");
 #endif
         wasm_runtime_free(foreign);
@@ -1888,7 +1890,7 @@ wasm_foreign_delete(wasm_foreign_t *foreign)
 
     foreign->ref_cnt--;
     if (!foreign->ref_cnt) {
-        #ifdef __FREE_DEBUG
+#ifdef __FREE_DEBUG
         printf("wasm_c_api:1892\n");
 #endif
         wasm_runtime_free(foreign);
@@ -2046,7 +2048,7 @@ wasm_module_delete_internal(wasm_module_t *module)
         module_ex->module_comm_rt = NULL;
     }
 #ifdef __FREE_DEBUG
-        printf("wasm_c_api:2049\n");
+    printf("wasm_c_api:2049\n");
 #endif
     wasm_runtime_free(module_ex);
 }
