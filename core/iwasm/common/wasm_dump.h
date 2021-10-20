@@ -87,6 +87,10 @@ void
 dump_wasm_table_t(Pool_Info *addr);
 void
 dump_wasm_memory_t(Pool_Info *addr);
+void
+dump_WASMRegisteredModule(Pool_Info *addr);
+void
+dump_LoadingModule(Pool_Info *addr);
 
 void
 dump_WASMExecEnv(Pool_Info *addr);
@@ -163,6 +167,8 @@ void
 dump_WASMInterpFrame(Pool_Info *addr);
 void
 dump_BranchBlock(Pool_Info *addr);
+void
+dump_BranchBlockPatch(Pool_Info *addr);
 void
 dump_WASMLoaderContext(Pool_Info *addr);
 void

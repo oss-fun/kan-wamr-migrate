@@ -411,6 +411,16 @@ dump_wasm_memory_t(Pool_Info *addr)
 {
     int i;
 }
+void
+dump_WASMRegisteredModule(Pool_Info *addr)
+{
+    int i;
+}
+void
+dump_LoadingModule(Pool_Info *addr)
+{
+    int i;
+}
 /* 
     *end wasm-c-api
 */
@@ -1453,7 +1463,11 @@ dump_WASMBranchBlock(Pool_Info *addr) //要チェック アロケートはされ
         fwrite(&node->cell_num, sizeof(uint32), 1, fp);
     }
 }
-
+void
+dump_BranchBlockPatch(Pool_Info *addr)
+{
+    int i;
+}
 void
 dump_WASMInterpFrame(Pool_Info *addr)
 {

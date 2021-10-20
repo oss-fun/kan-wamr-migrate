@@ -944,6 +944,7 @@ export_globals_instantiate(const WASMModule *module,
             runtime_malloc(total_size, error_buf, error_buf_size))) {
         return NULL;
     }
+    alloc_info(export_global, DUMMYT);
 
     for (i = 0; i < module->export_count; i++, export ++)
         if (export->kind == EXPORT_KIND_GLOBAL) {
@@ -1111,6 +1112,7 @@ sub_module_instantiate(WASMModule *module,
             wasm_deinstantiate(sub_module_inst, false);
             return false;
         }
+        alloc_info(sub_module_inst_list_node, DUMMYT);
 
         sub_module_inst_list_node->module_inst = sub_module_inst;
         sub_module_inst_list_node->module_name =
@@ -1246,6 +1248,7 @@ wasm_instantiate(WASMModule *module,
                                                error_buf, error_buf_size))) {
         goto fail;
     }
+    alloc_info(module_inst->frames, DUMMYT);
 #endif
 
     /* Instantiate global firstly to get the mutable data size */

@@ -84,6 +84,8 @@ init_dump_func(void)
     dump_data[wasm_global_tT] = dump_wasm_global_t;
     dump_data[wasm_table_tT] = dump_wasm_table_t;
     dump_data[wasm_memory_tT] = dump_wasm_memory_t;
+    dump_data[WASMRegisteredModuleT] = dump_WASMRegisteredModule;
+    dump_data[LoadingModuleT] = dump_LoadingModule;
 
     dump_data[WASMExecEnvT] = dump_WASMExecEnv;
     dump_data[NativeSymbolsNodeT] = dump_NativeSymbolsNode;
@@ -123,6 +125,7 @@ init_dump_func(void)
     dump_data[WASMBranchBlockT] = dump_WASMBranchBlock;
     dump_data[WASMInterpFrameT] = dump_WASMInterpFrame;
     dump_data[BranchBlockT] = dump_BranchBlock;
+    dump_data[BranchBlockPatchT] = dump_BranchBlockPatch;
     dump_data[WASMLoaderContextT] = dump_WASMLoaderContext;
     dump_data[ConstT] = dump_Const;
     dump_data[WASMModuleInstanceT] = dump_WASMModuleInstance;
@@ -311,6 +314,10 @@ alloc_infos(void *addr, Data_Type type, size_t size)
         CASE_INFOS(WASMMemoryInstanceCommon)
         CASE_INFOS(WASMSection)
         CASE_INFOS(WASMCApiFrame)
+#if WASM_ENABLE_MULTI_MODULE != 0
+        CASE_INFOS(WASMRegisteredModule)
+        CASE_INFOS(LoadingModule)
+#endif
 
         CASE_INFOS(WASMSharedMemNode)
 
@@ -332,7 +339,7 @@ alloc_infos(void *addr, Data_Type type, size_t size)
         CASE_INFOS(WASMTableSeg)
         CASE_INFOS(WASMDataSeg)
         CASE_INFOS(BlockAddr)
-        
+
         CASE_INFOS(StringNode)
         CASE_INFOS(BlockType)
         CASE_INFOS(WASMBranchBlock)
@@ -342,6 +349,9 @@ alloc_infos(void *addr, Data_Type type, size_t size)
         CASE_INFOS(BranchBlock)
         CASE_INFOS(WASMLoaderContext)
         CASE_INFOS(Const)
+#if WASM_ENABLE_FAST_INTERP != 0
+        CASE_INFOS(BranchBlockPatch)
+#endif
 
         CASE_INFOS(WASMModuleInstance)
 

@@ -348,6 +348,7 @@ wasm_runtime_register_module_internal(const char *module_name,
                   sizeof(WASMRegisteredModule));
         return false;
     }
+    alloc_info(node, WASMRegisteredModuleT);
 
     /* share the string and the module */
     node->module_name = module_name;
@@ -491,6 +492,7 @@ wasm_runtime_add_loading_module(const char *module_name,
     if (!loadingModule) {
         return false;
     }
+    alloc_info(loadingModule, LoadingModuleT);
 
     /* share the incoming string */
     loadingModule->module_name = module_name;
@@ -2160,7 +2162,9 @@ fail:
 static void *
 wasm_uvwasi_malloc(size_t size, void *mem_user_data)
 {
-    return runtime_malloc(size, NULL, NULL, 0);
+    void *p= runtime_malloc(size, NULL, NULL, 0);
+    alloc_info_buf(p, uint8T, size);
+    return p;
     (void)mem_user_data;
 }
 
@@ -2176,7 +2180,8 @@ static void *
 wasm_uvwasi_calloc(size_t nmemb, size_t size, void *mem_user_data)
 {
     uint64 total_size = (uint64)nmemb * size;
-    return runtime_malloc(total_size, NULL, NULL, 0);
+    void *p=runtime_malloc(total_size, NULL, NULL, 0);
+    alloc_info_buf(p, uint8T,total_size);
     (void)mem_user_data;
 }
 

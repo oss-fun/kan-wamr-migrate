@@ -4640,6 +4640,7 @@ wasm_loader_ctx_init(WASMFunction *func)
     if (!(loader_ctx->frame_offset_bottom = loader_ctx->frame_offset =
             wasm_runtime_malloc(loader_ctx->frame_offset_size)))
         goto fail;
+    alloc_info_buf(loader_ctx->frame_offset_bottom, uint16T, 32);
     memset(loader_ctx->frame_offset_bottom, 0, loader_ctx->frame_offset_size);
     loader_ctx->frame_offset_boundary = loader_ctx->frame_offset_bottom + 32;
 
@@ -4648,6 +4649,7 @@ wasm_loader_ctx_init(WASMFunction *func)
     if (!(loader_ctx->const_buf =
             wasm_runtime_malloc(loader_ctx->const_buf_size)))
         goto fail;
+    alloc_infos(loader_ctx->const_buf, ConstT, 8);
     memset(loader_ctx->const_buf, 0, loader_ctx->const_buf_size);
 
     loader_ctx->start_dynamic_offset = loader_ctx->dynamic_offset =
@@ -4949,6 +4951,7 @@ wasm_loader_ctx_reinit(WASMLoaderContext *ctx)
 {
     if (!(ctx->p_code_compiled = wasm_runtime_malloc(ctx->code_compiled_size)))
         return false;
+    alloc_info_buf(ctx->p_code_compiled, uint8T, ctx->code_compiled_size);
     memset(ctx->p_code_compiled, 0, ctx->code_compiled_size);
     ctx->p_code_compiled_end = ctx->p_code_compiled + ctx->code_compiled_size;
 
@@ -5176,6 +5179,7 @@ add_label_patch_to_list(BranchBlock *frame_csp,
     if (!patch) {
         return false;
     }
+    alloc_info(patch, BranchBlockPatchT);
     patch->patch_type = patch_type;
     patch->code_compiled = p_code_compiled;
     if (!frame_csp->patch_list) {
@@ -5757,7 +5761,7 @@ reserve_block_ret(WASMLoaderContext *loader_ctx,
         /* Allocate memory for the emit data */
         if (!(emit_data = loader_malloc(size, error_buf, error_buf_size)))
             return false;
-
+        alloc_info_buf(emit_data, uint8T, size);
         cells = emit_data;
         src_offsets = (int16 *)(cells + value_count);
         dst_offsets = (uint16 *)(src_offsets + value_count);
@@ -6280,7 +6284,7 @@ copy_params_to_dynamic_space(WASMLoaderContext *loader_ctx,
     /* Allocate memory for the emit data */
     if (!(emit_data = loader_malloc(size, error_buf, error_buf_size)))
         return false;
-
+    alloc_info_buf(emit_data, uint8T, size);
     cells = emit_data;
     src_offsets = (int16 *)(cells + param_count);
 
@@ -6636,6 +6640,8 @@ re_scan:
                         if (!(block->param_frame_offsets = loader_malloc(
                                 size, error_buf, error_buf_size)))
                             goto fail;
+                        alloc_info_buf(block->param_frame_offsets, uint16T,
+                                       size / sizeof(int16));
                         bh_memcpy_s(block->param_frame_offsets, (uint32)size,
                                     loader_ctx->frame_offset
                                       - size / sizeof(int16),
@@ -9177,6 +9183,7 @@ re_scan:
         if (!(func->consts = func_const = loader_malloc(
                 func->const_cell_num * 4, error_buf, error_buf_size)))
             goto fail;
+        alloc_info_buf(func->consts, uint8T, func->const_cell_num * 4);
 
         func_const_end = func->consts + func->const_cell_num * 4;
         /* reverse the const buf */

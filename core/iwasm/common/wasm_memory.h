@@ -76,6 +76,8 @@ typedef enum Data_Type {
     WASMMemoryInstanceCommonT,
     WASMSectionT,
     WASMCApiFrameT,
+    WASMRegisteredModuleT,
+    LoadingModuleT,
 
     //wasm_shared_memory.h
     WASMSharedMemNodeT,
@@ -112,8 +114,10 @@ typedef enum Data_Type {
 
     //wasm_loader.c
     BranchBlockT,
+    BranchBlockPatchT,
     WASMLoaderContextT,
     ConstT,
+    
 
     //wasm_runtime.h
     WASMModuleInstanceT,

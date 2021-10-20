@@ -5,14 +5,13 @@
 
 #include "bh_log.h"
 #include "wasm_shared_memory.h"
+#include "wasm_memory.h"
 
 static bh_list shared_memory_list_head;
 static bh_list *const shared_memory_list = &shared_memory_list_head;
 static korp_mutex shared_memory_list_lock;
 
-enum {
-    S_WAITING, S_NOTIFIED
-};
+enum { S_WAITING, S_NOTIFIED };
 
 typedef struct AtomicWaitInfo {
     korp_mutex wait_list_lock;
@@ -45,11 +44,9 @@ wasm_shared_memory_init()
     if (os_mutex_init(&shared_memory_list_lock) != 0)
         return false;
     /* wait map not exists, create new map */
-    if (!(wait_map =
-        bh_hash_map_create(32, true,
-                           (HashFunc)wait_address_hash,
-                           (KeyEqualFunc)wait_address_equal,
-                           NULL, destroy_wait_info))) {
+    if (!(wait_map = bh_hash_map_create(32, true, (HashFunc)wait_address_hash,
+                                        (KeyEqualFunc)wait_address_equal, NULL,
+                                        destroy_wait_info))) {
         os_mutex_destroy(&shared_memory_list_lock);
         return false;
     }
@@ -66,7 +63,7 @@ wasm_shared_memory_destroy()
     }
 }
 
-static WASMSharedMemNode*
+static WASMSharedMemNode *
 search_module(WASMModuleCommon *module)
 {
     WASMSharedMemNode *node;
@@ -86,7 +83,7 @@ search_module(WASMModuleCommon *module)
     return NULL;
 }
 
-WASMSharedMemNode*
+WASMSharedMemNode *
 wasm_module_get_shared_memory(WASMModuleCommon *module)
 {
     return search_module(module);
@@ -128,13 +125,13 @@ shared_memory_dec_reference(WASMModuleCommon *module)
     return -1;
 }
 
-WASMMemoryInstanceCommon*
+WASMMemoryInstanceCommon *
 shared_memory_get_memory_inst(WASMSharedMemNode *node)
 {
     return node->memory_inst;
 }
 
-WASMSharedMemNode*
+WASMSharedMemNode *
 shared_memory_set_memory_inst(WASMModuleCommon *module,
                               WASMMemoryInstanceCommon *memory)
 {
@@ -143,6 +140,7 @@ shared_memory_set_memory_inst(WASMModuleCommon *module,
 
     if (!(node = wasm_runtime_malloc(sizeof(WASMSharedMemNode))))
         return NULL;
+    alloc_info(node, WASMSharedMemNodeT);
 
     node->module = module;
     node->memory_inst = memory;
@@ -223,8 +221,7 @@ acquire_wait_info(void *address, bool create)
     AtomicWaitInfo *wait_info = NULL;
     bh_list_status ret;
 
-    wait_info = (AtomicWaitInfo *)
-                    bh_hash_map_find(wait_map, address);
+    wait_info = (AtomicWaitInfo *)bh_hash_map_find(wait_map, address);
 
     if (!create)
         return wait_info;
@@ -234,6 +231,8 @@ acquire_wait_info(void *address, bool create)
         if (!(wait_info =
                 (AtomicWaitInfo *)wasm_runtime_malloc(sizeof(AtomicWaitInfo))))
             return NULL;
+
+        alloc_info(wait_info, DUMMYT);
         memset(wait_info, 0, sizeof(AtomicWaitInfo));
 
         /* init wait list */
@@ -247,8 +246,7 @@ acquire_wait_info(void *address, bool create)
             return NULL;
         }
 
-        if (!bh_hash_map_insert(wait_map, address,
-                                (void *)wait_info)) {
+        if (!bh_hash_map_insert(wait_map, address, (void *)wait_info)) {
             os_mutex_destroy(&wait_info->wait_list_lock);
             wasm_runtime_free(wait_info);
             return NULL;
@@ -266,7 +264,6 @@ destroy_wait_info(void *wait_info)
     AtomicWaitNode *node, *next;
 
     if (wait_info) {
-
         node = bh_list_first_elem(((AtomicWaitInfo *)wait_info)->wait_list);
 
         while (node) {
@@ -283,8 +280,7 @@ destroy_wait_info(void *wait_info)
 }
 
 static void
-release_wait_info(HashMap *wait_map,
-                  AtomicWaitInfo *wait_info, void *address)
+release_wait_info(HashMap *wait_map, AtomicWaitInfo *wait_info, void *address)
 {
     if (wait_info->wait_list->len == 0) {
         bh_hash_map_remove(wait_map, address, NULL, NULL);
@@ -293,8 +289,11 @@ release_wait_info(HashMap *wait_map,
 }
 
 uint32
-wasm_runtime_atomic_wait(WASMModuleInstanceCommon *module, void *address,
-                         uint64 expect, int64 timeout, bool wait64)
+wasm_runtime_atomic_wait(WASMModuleInstanceCommon *module,
+                         void *address,
+                         uint64 expect,
+                         int64 timeout,
+                         bool wait64)
 {
     AtomicWaitInfo *wait_info;
     AtomicWaitNode *wait_node;
@@ -314,7 +313,7 @@ wasm_runtime_atomic_wait(WASMModuleInstanceCommon *module, void *address,
     if (module->module_type == Wasm_Module_AoT) {
         AOTModuleInstance *aot_inst = (AOTModuleInstance *)module;
         AOTMemoryInstance *aot_memory =
-            ((AOTMemoryInstance **)aot_inst->memories.ptr)[0];
+          ((AOTMemoryInstance **)aot_inst->memories.ptr)[0];
         /* Currently we have only one memory instance */
         if (!aot_memory->is_shared) {
             wasm_runtime_set_exception(module, "wait on unshared memory");
@@ -333,8 +332,8 @@ wasm_runtime_atomic_wait(WASMModuleInstanceCommon *module, void *address,
 
     os_mutex_lock(&wait_info->wait_list_lock);
 
-    if ((!wait64 && *(uint32*)address != (uint32)expect)
-        || (wait64 && *(uint64*)address != expect)) {
+    if ((!wait64 && *(uint32 *)address != (uint32)expect)
+        || (wait64 && *(uint64 *)address != expect)) {
         os_mutex_unlock(&wait_info->wait_list_lock);
         return 1;
     }
@@ -346,6 +345,7 @@ wasm_runtime_atomic_wait(WASMModuleInstanceCommon *module, void *address,
             os_mutex_unlock(&wait_info->wait_list_lock);
             return -1;
         }
+        alloc_info(wait_node, DUMMYT);
         memset(wait_node, 0, sizeof(AtomicWaitNode));
 
         if (0 != os_mutex_init(&wait_node->wait_lock)) {
@@ -375,8 +375,8 @@ wasm_runtime_atomic_wait(WASMModuleInstanceCommon *module, void *address,
 
     if (timeout < 0)
         timeout = BHT_WAIT_FOREVER;
-    os_cond_reltimedwait(&wait_node->wait_cond,
-                         &wait_node->wait_lock, timeout);
+    os_cond_reltimedwait(&wait_node->wait_cond, &wait_node->wait_lock,
+                         timeout);
 
     os_mutex_unlock(&wait_node->wait_lock);
 
@@ -401,7 +401,8 @@ wasm_runtime_atomic_wait(WASMModuleInstanceCommon *module, void *address,
 
 uint32
 wasm_runtime_atomic_notify(WASMModuleInstanceCommon *module,
-                           void *address, uint32 count)
+                           void *address,
+                           uint32 count)
 {
     uint32 notify_result;
     AtomicWaitInfo *wait_info;
