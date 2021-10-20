@@ -12,7 +12,6 @@
 #include "wasm_native.h"
 #include "wasm_shared_memory.h"
 #include "wasm_dump.h"
-#include 
 #include "../interpreter/wasm_opcode.h"
 #include "../interpreter/wasm_runtime.h"
 #include "../interpreter/wasm_loader.h"
