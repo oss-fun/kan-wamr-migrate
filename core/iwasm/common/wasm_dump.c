@@ -462,7 +462,7 @@ dump_WASMExecEnv(Pool_Info *addr)
 
     //korp_tid handle;
 
-    //#if WASM_ENABLE_INTERP != 0 && WASM_ENABLE_FAST_INTERP == 0
+#if WASM_ENABLE_INTERP != 0 && WASM_ENABLE_FAST_INTERP == 0
     //BlockAddr block_addr_cache[BLOCK_ADDR_CACHE_SIZE][BLOCK_ADDR_CONFLICT_SIZE];
     for (i = 0; i < BLOCK_ADDR_CACHE_SIZE; i++) {
         for (j = 0; j < BLOCK_ADDR_CONFLICT_SIZE; j++) {
@@ -474,8 +474,7 @@ dump_WASMExecEnv(Pool_Info *addr)
             DUMP_PTR(node->block_addr_cache[i][j].end_addr);
         }
     }
-
-    //#endif
+#endif
     /*
 #ifdef OS_ENABLE_HW_BOUND_CHECK
     WASMJmpBuf *jmpbuf_stack_top;
@@ -1480,13 +1479,12 @@ dump_WASMInterpFrame(Pool_Info *addr)
     //uint8 *ip;
     DUMP_PTR(node->ip);
 
-    /*
 #if WASM_ENABLE_FAST_INTERP != 0
-        uint32 ret_offset;
-        uint32 *lp;
-        uint32 operand[1];
+    uint32 ret_offset;
+    uint32 *lp;
+    uint32 operand[1];
 #else
-*/
+
     // uint32 *sp_bottom;
     DUMP_PTR(node->sp_bottom);
     // uint32 *sp_boundary;
@@ -1541,7 +1539,7 @@ dump_WASMInterpFrame(Pool_Info *addr)
     fwrite(node->lp, sizeof(uint32),
            addr->size - (uint32)offsetof(WASMInterpFrame, lp), fp);
 
-    //#endif
+#endif
 }
 
 void
@@ -1550,7 +1548,7 @@ dump_BranchBlock(Pool_Info *addr)
     int i;
 
     printf("BranchBlock\n");
-    HEADER(BranchBlock);
+    //HEADER(BranchBlock);
 
     uint8 label_type;
     BlockType block_type;

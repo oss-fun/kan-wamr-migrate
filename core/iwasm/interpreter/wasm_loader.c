@@ -4380,11 +4380,7 @@ fail:
 
 #define PATCH_ELSE 0
 #define PATCH_END  1
-typedef struct BranchBlockPatch {
-    struct BranchBlockPatch *next;
-    uint8 patch_type;
-    uint8 *code_compiled;
-} BranchBlockPatch;
+
 #endif
 
 static void *
