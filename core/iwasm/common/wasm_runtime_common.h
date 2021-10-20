@@ -326,6 +326,11 @@ typedef struct WASMRegisteredModule {
     uint8 *orig_file_buf;
     uint32 orig_file_buf_size;
 } WASMRegisteredModule;
+typedef struct LoadingModule {
+    bh_list_link l;
+    /* point to a string pool */
+    const char *module_name;
+} LoadingModule;
 #endif
 
 typedef struct WASMMemoryInstanceCommon {

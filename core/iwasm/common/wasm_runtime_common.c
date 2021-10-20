@@ -29,11 +29,7 @@
  * circular depencies leading a stack overflow
  * try break early
  */
-typedef struct LoadingModule {
-    bh_list_link l;
-    /* point to a string pool */
-    const char *module_name;
-} LoadingModule;
+
 
 static bh_list loading_module_list_head;
 static bh_list *const loading_module_list = &loading_module_list_head;
