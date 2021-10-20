@@ -324,7 +324,6 @@ wasm_native_register_natives(const char *module_name,
                              NativeSymbol *native_symbols,
                              uint32 n_native_symbols)
 {
-    printf("symbol natives\n");
     return register_natives(module_name, native_symbols, n_native_symbols, false);
 }
 
@@ -416,6 +415,9 @@ wasm_native_destroy()
     node = g_native_symbols_list;
     while (node) {
         node_next = node->next;
+        #ifdef __FREE_DEBUG
+        printf("wasm_native:419\n");
+#endif
         wasm_runtime_free(node);
         node = node_next;
     }

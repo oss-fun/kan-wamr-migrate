@@ -78,6 +78,9 @@ fail2:
     wasm_runtime_free(exec_env->argv_buf);
 fail1:
 #endif
+#ifdef __FREE_DEBUG
+        printf("wasm_exec_env:82\n");
+#endif
     wasm_runtime_free(exec_env);
     return NULL;
 }
@@ -91,6 +94,9 @@ wasm_exec_env_destroy_internal(WASMExecEnv *exec_env)
 #endif
 #if WASM_ENABLE_AOT != 0
     wasm_runtime_free(exec_env->argv_buf);
+#endif
+#ifdef __FREE_DEBUG
+        printf("wasm_exec_env:99\n");
 #endif
     wasm_runtime_free(exec_env);
 }

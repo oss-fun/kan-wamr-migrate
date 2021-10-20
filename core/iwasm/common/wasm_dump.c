@@ -14,22 +14,29 @@
 static FILE *fp;
 static unsigned long base;
 
-#define HEADER(type)                                                          \
-    type *node = (type *)addr->p_raw;                                         \
-    fputc(type##T, fp);                                                       \
-    fwrite(&addr->size, sizeof(int), 1, fp)
+#define HEADER_BUF(Type)                                                      \
+    Type *node = (Type *)addr->p_raw;                                         \
+    fputc(Type##T, fp);                                                       \
+    fwrite(&addr->size, sizeof(uint64), 1, fp);                               \
+    fwrite(&addr->p_abs, sizeof(int), 1, fp)
+
+#define HEADER(Type)                                                          \
+    fputc(Type##T, fp);                                                       \
+    fwrite(&addr->size, sizeof(uint64), 1, fp);                               \
+    for (Type *node = (Type *)addr->p_raw; addr != NULL;                      \
+         addr = addr->list, node = addr)
 
 #define DUMP_PTR(attr)                                                        \
     do {                                                                      \
-        unsigned long p = (unsigned long)attr;                                \
-        p -= base;                                                            \
-        fwrite(&p, sizeof(int), 1, fp);                                       \
+        unsigned long _p = (unsigned long)attr;                               \
+        _p -= base;                                                           \
+        fwrite(&_p, sizeof(int), 1, fp);                                      \
     } while (0)
 
 void
 init_dump(void *addr)
 {
-    if((fp = fopen("dump.img", "wb"))==NULL){
+    if ((fp = fopen("dump.img", "wb")) == NULL) {
         printf("file open error\n");
         exit(1);
     }
@@ -37,31 +44,27 @@ init_dump(void *addr)
 }
 
 void
-dump_char(Pool_Info *addr)
+dump_char(Pool_Info *addr) //buf
 {
     int i;
     fputc(charT, fp);
-    fwrite(&addr->size, sizeof(size_t), 1, fp);
-    for (i = 0; i < addr->size; i++) {
-        int p_abs = addr->p_abs + i * sizeof(char);
-        fwrite(&p_abs, sizeof(int), 1, fp);
-        fwrite((char *)addr->p_raw + i, sizeof(char), 1, fp);
-    }
+    fwrite(&addr->size, sizeof(uint64), 1, fp);
+    fwrite(&addr->p_abs, sizeof(int), 1, fp);
+    fwrite((char *)addr->p_raw, sizeof(char), addr->size, fp);
 }
 
 void
 dump_charT(Pool_Info *addr)
 {
     int i;
-    // skip
-    printf("charTTTTT\n");
     fputc(charTT, fp);
-    fwrite(&addr->size, sizeof(size_t), 1, fp);
-    for (i = 0; i < addr->size; i++) {
-        int p_abs = addr->p_abs + i * sizeof(char *);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    fwrite(&addr->size, sizeof(uint64), 1, fp);
+    fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
-        DUMP_PTR(addr->p_raw + i);
+    char **raw = addr->p_raw;
+    for (i = 0; i < addr->size; i++) {
+        DUMP_PTR(raw);
+        raw++;
     }
 }
 void
@@ -69,24 +72,18 @@ dump_uint8(Pool_Info *addr)
 {
     int i;
     fputc(uint8T, fp);
-    fwrite(&addr->size, sizeof(size_t), 1, fp);
-    for (i = 0; i < addr->size; i++) {
-        int p_abs = addr->p_abs + i * sizeof(uint8);
-        fwrite(&p_abs, sizeof(int), 1, fp);
-        fwrite((uint8 *)addr->p_raw + i, sizeof(uint8), 1, fp);
-    }
+    fwrite(&addr->size, sizeof(uint64), 1, fp);
+    fwrite(&addr->p_abs, sizeof(int), 1, fp);
+    fwrite((uint8 *)addr->p_raw, sizeof(uint8), addr->size, fp);
 }
 void
 dump_uint16(Pool_Info *addr)
 {
     int i;
     fputc(uint16T, fp);
-    fwrite(&addr->size, sizeof(size_t), 1, fp);
-    for (i = 0; i < addr->size; i++) {
-        int p_abs = addr->p_abs + i * sizeof(uint16);
-        fwrite(&p_abs, sizeof(int), 1, fp);
-        fwrite((uint16 *)addr->p_raw + i, sizeof(uint16), 1, fp);
-    }
+    fwrite(&addr->size, sizeof(uint64), 1, fp);
+    fwrite(&addr->p_abs, sizeof(int), 1, fp);
+    fwrite((uint16 *)addr->p_raw, sizeof(uint16), addr->size, fp);
 }
 
 void
@@ -94,13 +91,9 @@ dump_uint32(Pool_Info *addr)
 {
     int i;
     fputc(uint32T, fp);
+    fwrite(&addr->size, sizeof(uint64), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
-    fwrite(&addr->size, sizeof(size_t), 1, fp);
-    for (i = 0; i < addr->size; i++) {
-        int p_abs = addr->p_abs + i * sizeof(uint32);
-        fwrite(&p_abs, sizeof(int), 1, fp);
-        fwrite((uint32 *)addr->p_raw + i, sizeof(uint32), 1, fp);
-    }
+    fwrite((uint32 *)addr->p_raw, sizeof(uint32), addr->size, fp);
 }
 
 void
@@ -108,24 +101,18 @@ dump_uint64(Pool_Info *addr)
 {
     int i;
     fputc(uint64T, fp);
+    fwrite(&addr->size, sizeof(uint64), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
-    fwrite(&addr->size, sizeof(size_t), 1, fp);
-    for (i = 0; i < addr->size; i++) {
-        int p_abs = addr->p_abs + i * sizeof(uint64);
-        fwrite(&p_abs, sizeof(int), 1, fp);
-        fwrite((uint64 *)addr->p_raw + i, sizeof(uint64), 1, fp);
-    }
+    fwrite((uint64 *)addr->p_raw, sizeof(uint64), addr->size, fp);
 }
 
 void
 dump_gc_heap_t(Pool_Info *addr)
 {
     int i;
-    HEADER(gc_heap_t);
-
-    for (i = 0; i < addr->size; i++, node = (gc_heap_t *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(gc_heap_t);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(gc_heap_t)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         //gc_handle_t heap_id; ==void*
         DUMP_PTR(node->heap_id);
@@ -170,11 +157,9 @@ void
 dump_WASIContext(Pool_Info *addr)
 {
     int i;
-    HEADER(WASIContext);
-
-    for (i = 0; i < addr->size; i++, node = (WASIContext *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASIContext);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(WASIContext)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         //struct fd_table *curfds;
         //struct fd_prestats *prestats;
@@ -196,7 +181,7 @@ dump_WASIContext(Pool_Info *addr)
             //   char **environ_list;
             DUMP_PTR(node->argv_environ->environ_list);
             //   size_t environ_count;
-            fwrite(&node->argv_environ->environ_count,sizeof(uint64),1,fp);
+            fwrite(&node->argv_environ->environ_count, sizeof(uint64), 1, fp);
         }
 
         //char *argv_buf;
@@ -277,11 +262,9 @@ void
 dump_wasm_val_t(Pool_Info *addr)
 {
     int i;
-    HEADER(wasm_val_t);
-
-    for (i = 0; i < addr->size; i++, node = (wasm_val_t *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(wasm_val_t);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(wasm_val_t)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         //wasm_valkind_t kind;==uint8_t
         fwrite(&node->kind, sizeof(uint8_t), 1, fp);
@@ -432,10 +415,7 @@ void
 dump_WASMExecEnv(Pool_Info *addr)
 {
     int i, j;
-    HEADER(WASMExecEnv);
-
-    int p_abs = addr->p_abs;
-    fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER_BUF(WASMExecEnv);
 
     //struct WASMExecEnv *next;
     DUMP_PTR(node->next);
@@ -522,12 +502,9 @@ dump_NativeSymbolsNode(Pool_Info *addr)
 {
     int i;
 
-    printf("native symbol\n");
-    HEADER(NativeSymbolsNode);
-    for (i = 0; i < addr->size;
-         i++, node = (NativeSymbolsNode *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(NativeSymbolsNode);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(NativeSymbolsNode)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         //struct NativeSymbolsNode *next;
         DUMP_PTR(node->next);
@@ -545,47 +522,32 @@ void
 dump_WASMModuleCommon(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMModuleCommon);
+    HEADER_BUF(WASMModuleCommon);
 
-    for (i = 0; i < addr->size;
-         i++, node = (WASMModuleCommon *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMModuleCommon);
-        fwrite(&p_abs, sizeof(int), 1, fp);
-
-        //uint32 module_type;
-        fwrite(&node->module_type, sizeof(uint32), 1, fp);
-        //uint8 module_data[1];
-        fwrite(node->module_data, sizeof(uint8), 1, fp);
-    }
+    //uint32 module_type;
+    fwrite(&node->module_type, sizeof(uint32), 1, fp);
+    //uint8 module_data[1];
+    fwrite(node->module_data, sizeof(uint8), 1, fp);
 }
 void
 dump_WASMModuleInstanceCommon(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMModuleInstanceCommon);
+    HEADER_BUF(WASMModuleInstanceCommon);
 
-    for (i = 0; i < addr->size;
-         i++, node = (WASMModuleInstanceCommon *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMModuleInstanceCommon);
-        fwrite(&p_abs, sizeof(int), 1, fp);
-
-        //uint32 module_type;
-        fwrite(&node->module_type, sizeof(uint32), 1, fp);
-        //uint8 module_inst_data[1];
-        fwrite(node->module_inst_data, sizeof(uint8), 1, fp);
-    }
+    //uint32 module_type;
+    fwrite(&node->module_type, sizeof(uint32), 1, fp);
+    //uint8 module_inst_data[1];
+    fwrite(node->module_inst_data, sizeof(uint8), 1, fp);
 }
 
 void
 dump_WASMModuleMemConsumption(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMModuleMemConsumption);
-
-    for (i = 0; i < addr->size;
-         i++, node = (WASMModuleMemConsumption *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMModuleMemConsumption);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(WASMModuleMemConsumption)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         //uint32 total_size;
         fwrite(&node->total_size, sizeof(uint32), 1, fp);
@@ -617,16 +579,14 @@ dump_WASMModuleMemConsumption(Pool_Info *addr)
 #endif*/
     }
 }
+
 void
 dump_WASMModuleInstMemConsumption(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMModuleInstMemConsumption);
-
-    for (i = 0; i < addr->size;
-         i++, node = (WASMModuleInstMemConsumption *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMModuleInstMemConsumption);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(WASMModuleInstMemConsumption)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         //uint32 total_size;
         fwrite(&node->total_size, sizeof(uint32), 1, fp);
@@ -650,28 +610,20 @@ void
 dump_WASMMemoryInstanceCommon(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMMemoryInstanceCommon);
+    HEADER_BUF(WASMMemoryInstanceCommon);
 
-    for (i = 0; i < addr->size;
-         i++, node = (WASMMemoryInstanceCommon *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMMemoryInstanceCommon);
-        fwrite(&p_abs, sizeof(int), 1, fp);
-
-        //uint32 module_type;
-        fwrite(&node->module_type, sizeof(uint32), 1, fp);
-        //uint8 memory_inst_data[1];
-        fwrite(node->memory_inst_data, sizeof(uint8), 1, fp);
-    }
+    //uint32 module_type;
+    fwrite(&node->module_type, sizeof(uint32), 1, fp);
+    //uint8 memory_inst_data[1];
+    fwrite(node->memory_inst_data, sizeof(uint8), 1, fp);
 }
 void
 dump_WASMSection(Pool_Info *addr) //==wasm_section_t
 {
     int i;
-    HEADER(WASMSection);
-
-    for (i = 0; i < addr->size; i++, node = (WASMSection *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMSection);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(WASMSection)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         //struct wasm_section_t *next;
         DUMP_PTR(node->next);
@@ -687,11 +639,9 @@ void
 dump_WASMCApiFrame(Pool_Info *addr) //==wasm_frame_t
 {
     int i;
-    HEADER(WASMCApiFrame);
-
-    for (i = 0; i < addr->size; i++, node = (WASMCApiFrame *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMCApiFrame);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(WASMCApiFrame)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         //void *instance;
         DUMP_PTR(node->instance);
@@ -715,11 +665,9 @@ void
 dump_WASMModule(Pool_Info *addr) // 要チェック
 {
     int i;
-    HEADER(WASMModule);
-
-    for (i = 0; i < addr->size; i++, node = (WASMModule *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMModule);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(WASMModule)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         //uint32 module_type;
         fwrite(&node->module_type, sizeof(uint32), 1, fp);
@@ -839,14 +787,12 @@ dump_WASMModule(Pool_Info *addr) // 要チェック
 #endif
     }
 }
+
 void
 dump_WASMFunction(Pool_Info *addr) //要チェック
 {
     int i;
-    HEADER(WASMFunction);
-
-    int p_abs = addr->p_abs + i * sizeof(WASMFunction);
-    fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER_BUF(WASMFunction);
 
 #if WASM_ENABLE_CUSTOM_NAME_SECTION != 0
     char *field_name;
@@ -884,27 +830,29 @@ dump_WASMFunction(Pool_Info *addr) //要チェック
     // +local_count // sizeof(WASMFunction) + (uint64)local_count
     fwrite(node->local_types, sizeof(uint8), node->local_count, fp);
 }
+
 void
 dump_WASMFunctionT(Pool_Info *addr)
 {
     int i;
     fputc(WASMFunctionTT, fp);
-    fwrite(&addr->size, sizeof(size_t), 1, fp);
-    for (i = 0; i < addr->size; i++) {
-        int p_abs = addr->p_abs + i * sizeof(WASMFunction *);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    fwrite(&addr->size, sizeof(uint64), 1, fp);
+    fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
-        DUMP_PTR(addr->p_raw + i);
+    WASMFunction **raw = addr->p_raw;
+    for (i = 0; i < addr->size; i++) {
+        DUMP_PTR(raw);
+        raw++;
     }
 }
+
 void
 dump_WASMGlobal(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMGlobal);
-    for (i = 0; i < addr->size; i++, node = (WASMGlobal *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMGlobal);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(WASMGlobal)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         //uint8 type;
         fwrite(&node->type, sizeof(uint8), 1, fp);
@@ -975,10 +923,9 @@ void
 dump_WASMExport(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMExport);
-    for (i = 0; i < addr->size; i++, node = (WASMExport *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMExport);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(WASMExport)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         //char *name; stringnodeの途中を指す
         fputs(node->name, fp);
@@ -988,27 +935,26 @@ dump_WASMExport(Pool_Info *addr)
         fwrite(&node->index, sizeof(uint32), 1, fp);
     }
 }
+
 void
 dump_V128(Pool_Info *addr)
 {
     int i;
-    HEADER(V128);
-    for (i = 0; i < addr->size; i++, node = (WASMExport *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(V128);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(V128)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         fwrite(&node->f64x2, sizeof(float64), 2, fp);
     }
 }
+
 void
 dump_WASMValue(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMValue);
-    for (i = 0; i < addr->size; i++, node = (WASMValue *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMValue);
-        fwrite(&p_abs, sizeof(int), 1, fp);
-
+    HEADER(WASMValue)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
         fwrite(&node->v128.f32x4, sizeof(float64), 2, fp);
     }
 }
@@ -1016,12 +962,9 @@ void
 dump_InitializerExpression(Pool_Info *addr)
 {
     int i;
-    HEADER(InitializerExpression);
-
-    for (i = 0; i < addr->size;
-         i++, node = (InitializerExpression *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(InitializerExpression);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(InitializerExpression)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         //uint8 init_expr_type;
         fwrite(&node->init_expr_type, sizeof(uint8), 1, fp);
@@ -1075,14 +1018,12 @@ dump_InitializerExpression(Pool_Info *addr)
         }
     }
 }
+
 void
 dump_WASMType(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMType);
-
-    int p_abs = addr->p_abs + i * sizeof(WASMType);
-    fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER_BUF(WASMType);
 
     // uint16 param_count;
     fwrite(&node->param_count, sizeof(uint16), 1, fp);
@@ -1096,28 +1037,29 @@ dump_WASMType(Pool_Info *addr)
     fwrite(node->types, sizeof(uint8), node->param_count + node->result_count,
            fp);
 }
+
 void
 dump_WASMTypeT(Pool_Info *addr)
 {
     int i;
     fputc(WASMTypeTT, fp);
-    fwrite(&addr->size, sizeof(size_t), 1, fp);
-    for (i = 0; i < addr->size; i++) {
-        int p_abs = addr->p_abs + i * sizeof(WASMType *);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    fwrite(&addr->size, sizeof(uint64), 1, fp);
+    fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
-        DUMP_PTR(addr->p_raw + i);
+    WASMType **raw = addr->p_raw;
+    for (i = 0; i < addr->size; i++) {
+        DUMP_PTR(raw);
+        raw++;
     }
 }
+
 void
 dump_WASMTable(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMTable);
-
-    for (i = 0; i < addr->size; i++, node = (WASMTable *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMTable);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(WASMTable)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         //uint8 elem_type;
         fwrite(&node->elem_type, sizeof(uint8), 1, fp);
@@ -1135,11 +1077,9 @@ void
 dump_WASMMemory(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMMemory);
-
-    for (i = 0; i < addr->size; i++, node = (WASMMemory *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMMemory);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(WASMMemory)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         // uint32 flags;
         fwrite(&node->flags, sizeof(uint32), 1, fp);
@@ -1181,15 +1121,14 @@ dump_WASMGlobalImport(Pool_Info *addr)
     int i;
     // maybe skip
 }
+
 void
 dump_WASMImport(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMImport);
-
-    for (i = 0; i < addr->size; i++, node = (WASMImport *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMImport);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(WASMImport)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         // uint8 kind;
         fwrite(&node->kind, sizeof(uint8), 1, fp);
@@ -1286,11 +1225,9 @@ void
 dump_WASMTableSeg(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMTableSeg);
-
-    for (i = 0; i < addr->size; i++, node = (WASMTableSeg *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMTableSeg);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(WASMTableSeg)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         // uint32 mode;
         fwrite(&node->mode, sizeof(uint32), 1, fp);
@@ -1366,15 +1303,14 @@ dump_WASMTableSeg(Pool_Info *addr)
         DUMP_PTR(node->func_indexes);
     }
 }
+
 void
 dump_WASMDataSeg(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMDataSeg);
-
-    for (i = 0; i < addr->size; i++, node = (WASMDataSeg *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMDataSeg);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(WASMDataSeg)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         // uint32 memory_index;
         fwrite(&node->memory_index, sizeof(uint32), 1, fp);
@@ -1446,17 +1382,19 @@ dump_WASMDataSeg(Pool_Info *addr)
         DUMP_PTR(node->data);
     }
 }
+
 void
 dump_WASMDataSegT(Pool_Info *addr)
 {
     int i;
     fputc(WASMDataSegTT, fp);
-    fwrite(&addr->size, sizeof(size_t), 1, fp);
-    for (i = 0; i < addr->size; i++) {
-        int p_abs = addr->p_abs + i * sizeof(WASMDataSeg *);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    fwrite(&addr->size, sizeof(uint64), 1, fp);
+    fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
-        DUMP_PTR(addr->p_raw + i);
+    WASMDataSeg **raw = addr->p_raw;
+    for (i = 0; i < addr->size; i++) {
+        DUMP_PTR(raw);
+        raw++;
     }
 }
 void
@@ -1470,6 +1408,7 @@ dump_WASIArguments(Pool_Info *addr)
 {
     int i;
     // maybe skip
+    printf("WASIArguments\n");
     const char **dir_list;
     uint32 dir_count;
     const char **map_dir_list;
@@ -1480,22 +1419,19 @@ dump_WASIArguments(Pool_Info *addr)
     uint32 argc;
     int stdio[3];
 }
+
 void
 dump_StringNode(Pool_Info *addr)
 {
     int i;
-    HEADER(StringNode);
-    for (i = 0; i < addr->size; i++, node = (StringNode *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(StringNode);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER_BUF(StringNode);
 
-        //size
-        fwrite(&addr->size, sizeof(int), 1, fp);
-        //struct StringNode *next;
-        DUMP_PTR(node->next);
-        //char *str;
-        fwrite(node->str, sizeof(char), addr->size, fp);
-    }
+    //size
+    fwrite(&addr->size, sizeof(int), 1, fp);
+    //struct StringNode *next;
+    DUMP_PTR(node->next);
+    //char *str;
+    fwrite(node->str, sizeof(char), addr->size, fp);
 }
 void
 dump_BlockType(Pool_Info *addr)
@@ -1507,12 +1443,10 @@ void
 dump_WASMBranchBlock(Pool_Info *addr) //要チェック アロケートはされない
 {
     int i;
-    HEADER(WASMBranchBlock);
-
-    for (i = 0; i < addr->size;
-         i++, node = (WASMBranchBlock *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMBranchBlock);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    printf("WASMBranchBlock\n");
+    HEADER(WASMBranchBlock)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         // uint8 *begin_addr;
         DUMP_PTR(node->begin_addr);
@@ -1529,90 +1463,87 @@ void
 dump_WASMInterpFrame(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMInterpFrame);
+    HEADER_BUF(WASMInterpFrame);
 
-    for (i = 0; i < addr->size;
-         i++, node = (WASMInterpFrame *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMInterpFrame);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    //struct WASMInterpFrame *prev_frame;
+    DUMP_PTR(node->prev_frame);
 
-        //struct WASMInterpFrame *prev_frame;
-        DUMP_PTR(node->prev_frame);
+    //struct WASMFunctionInstance *function;
+    DUMP_PTR(node->function);
 
-        //struct WASMFunctionInstance *function;
-        DUMP_PTR(node->function);
+    //uint8 *ip;
+    DUMP_PTR(node->ip);
 
-        //uint8 *ip;
-        DUMP_PTR(node->ip);
-
+    /*
 #if WASM_ENABLE_FAST_INTERP != 0
-        /* return offset of the first return value of current frame.
-    the callee will put return values here continuously */
         uint32 ret_offset;
         uint32 *lp;
         uint32 operand[1];
 #else
-        // uint32 *sp_bottom;
-        DUMP_PTR(node->sp_bottom);
-        // uint32 *sp_boundary;
-        DUMP_PTR(node->sp_boundary);
-        // uint32 *sp;
-        DUMP_PTR(node->sp);
+*/
+    // uint32 *sp_bottom;
+    DUMP_PTR(node->sp_bottom);
+    // uint32 *sp_boundary;
+    DUMP_PTR(node->sp_boundary);
+    // uint32 *sp;
+    DUMP_PTR(node->sp);
 
-        // WASMBranchBlock *csp_bottom;
-        //DUMP_PTR(node->csp_bottom);
-        {
-            // uint8 *begin_addr;
-            DUMP_PTR(node->csp_bottom->begin_addr);
-            // uint8 *target_addr;
-            DUMP_PTR(node->csp_bottom->target_addr);
-            // uint32 *frame_sp;
-            DUMP_PTR(node->csp_bottom->frame_sp);
-            // uint32 cell_num;
-            fwrite(&node->csp_bottom->cell_num, sizeof(uint32), 1, fp);
-        }
-        // WASMBranchBlock *csp_boundary;
-        //DUMP_PTR(node->csp_boundary);
-        { // uint8 *begin_addr;
-            DUMP_PTR(node->csp_boundary->begin_addr);
-            // uint8 *target_addr;
-            DUMP_PTR(node->csp_boundary->target_addr);
-            // uint32 *frame_sp;
-            DUMP_PTR(node->csp_boundary->frame_sp);
-            // uint32 cell_num;
-            fwrite(&node->csp_boundary->cell_num, sizeof(uint32), 1, fp);
-        }
-        // WASMBranchBlock *csp;
-        //DUMP_PTR(node->csp);
-        {
-            // uint8 *begin_addr;
-            DUMP_PTR(node->csp->begin_addr);
-            // uint8 *target_addr;
-            DUMP_PTR(node->csp->target_addr);
-            // uint32 *frame_sp;
-            DUMP_PTR(node->csp->frame_sp);
-            // uint32 cell_num;
-            fwrite(&node->csp->cell_num, sizeof(uint32), 1, fp);
-        }
+    // WASMBranchBlock *csp_bottom;
+    DUMP_PTR(node->csp_bottom);
+    if (node->csp_bottom) {
+        // uint8 *begin_addr;
+        DUMP_PTR(node->csp_bottom->begin_addr);
+        // uint8 *target_addr;
+        DUMP_PTR(node->csp_bottom->target_addr);
+        // uint32 *frame_sp;
+        DUMP_PTR(node->csp_bottom->frame_sp);
+        // uint32 cell_num;
+        fwrite(&node->csp_bottom->cell_num, sizeof(uint32), 1, fp);
+    }
+    // WASMBranchBlock *csp_boundary;
+    DUMP_PTR(node->csp_boundary);
+    if (node->csp_boundary) {
+        // uint8 *begin_addr;
+        DUMP_PTR(node->csp_boundary->begin_addr);
+        // uint8 *target_addr;
+        DUMP_PTR(node->csp_boundary->target_addr);
+        // uint32 *frame_sp;
+        DUMP_PTR(node->csp_boundary->frame_sp);
+        // uint32 cell_num;
+        fwrite(&node->csp_boundary->cell_num, sizeof(uint32), 1, fp);
+    }
+    // WASMBranchBlock *csp;
+    DUMP_PTR(node->csp);
+    if (node->csp) {
+        // uint8 *begin_addr;
+        DUMP_PTR(node->csp->begin_addr);
+        // uint8 *target_addr;
+        DUMP_PTR(node->csp->target_addr);
+        // uint32 *frame_sp;
+        DUMP_PTR(node->csp->frame_sp);
+        // uint32 cell_num;
+        fwrite(&node->csp->cell_num, sizeof(uint32), 1, fp);
+    }
 
-        /* Frame data, the layout is:
+    /* Frame data, the layout is:
      lp: param_cell_count + local_cell_count
      sp_bottom to sp_boundary: stack of data
      csp_bottom to csp_boundary: stack of block
      ref to frame end: data types of local vairables and stack data
      */
-        //uint32 lp[1]; 環境依存のサイズが微妙align_uint(cell_num) 要チェック
-        fwrite(node->lp, sizeof(uint32),
-               addr->size - (uint32)offsetof(WASMInterpFrame, lp), fp);
+    //uint32 lp[1]; 環境依存のサイズが微妙align_uint(cell_num) 要チェック
+    fwrite(node->lp, sizeof(uint32),
+           addr->size - (uint32)offsetof(WASMInterpFrame, lp), fp);
 
-#endif
-    }
+    //#endif
 }
 
 void
 dump_BranchBlock(Pool_Info *addr)
 {
     int i;
+
+    printf("BranchBlock\n");
     HEADER(BranchBlock);
 
     uint8 label_type;
@@ -1641,17 +1572,16 @@ void
 dump_WASMLoaderContext(Pool_Info *addr)
 {
     int i;
+    printf("WASMLoaderContext\n");
     // skip
 }
 void
 dump_Const(Pool_Info *addr)
 {
     int i;
-    HEADER(Const);
-
-    for (i = 0; i < addr->size; i++, node = (Const *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(Const);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(Const)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         // WASMValue value;
         fwrite(&node->value.v128.f32x4, sizeof(float64), 2, fp);
@@ -1666,12 +1596,9 @@ void
 dump_WASMModuleInstance(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMModuleInstance);
-
-    for (i = 0; i < addr->size;
-         i++, node = (WASMModuleInstance *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMModuleInstance);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(WASMModuleInstance)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         // uint32 module_type;
         fwrite(&node->module_type, sizeof(uint32), 1, fp);
@@ -1750,13 +1677,9 @@ void
 dump_WASMFunctionInstance(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMFunctionInstance);
-
-    for (i = 0; i < addr->size;
-         i++, node = (WASMFunctionInstance *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMFunctionInstance);
-        fwrite(&p_abs, sizeof(int), 1, fp);
-
+    HEADER(WASMFunctionInstance)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
         // bool is_import_func;
         fwrite(&node->is_import_func, sizeof(bool), 1, fp);
         // uint16 param_count;
@@ -1791,12 +1714,9 @@ void
 dump_WASMMemoryInstance(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMMemoryInstance);
-
-    for (i = 0; i < addr->size;
-         i++, node = (WASMMemoryInstance *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMMemoryInstance);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(WASMMemoryInstance)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         // uint32 module_type;
         fwrite(&node->module_type, sizeof(uint32), 1, fp);
@@ -1831,58 +1751,52 @@ dump_WASMMemoryInstanceT(Pool_Info *addr)
 {
     int i;
     fputc(WASMMemoryInstanceTT, fp);
-    fwrite(&addr->size, sizeof(size_t), 1, fp);
-    for (i = 0; i < addr->size; i++) {
-        int p_abs = addr->p_abs + i * sizeof(WASMMemoryInstance *);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    fwrite(&addr->size, sizeof(uint64), 1, fp);
+    fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
-        DUMP_PTR(addr->p_raw + i);
+    WASMMemoryInstance **raw = addr->p_raw;
+    for (i = 0; i < addr->size; i++) {
+        DUMP_PTR(raw);
+        raw++;
     }
 }
 void
 dump_WASMTableInstance(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMTableInstance);
-    for (i = 0; i < addr->size;
-         i++, node = (WASMTableInstance *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMTableInstance);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER_BUF(WASMTableInstance);
 
-        // uint8 elem_type;
-        fwrite(&node->elem_type, sizeof(uint8), 1, fp);
-        // uint32 cur_size;
-        fwrite(&node->cur_size, sizeof(uint32), 1, fp);
-        // uint32 max_size;
-        fwrite(&node->max_size, sizeof(uint32), 1, fp);
-        // uint8 base_addr[1];
-        fwrite(node->base_addr, sizeof(uint32), addr->size / sizeof(uint32),
-               fp);
-    }
+    // uint8 elem_type;
+    fwrite(&node->elem_type, sizeof(uint8), 1, fp);
+    // uint32 cur_size;
+    fwrite(&node->cur_size, sizeof(uint32), 1, fp);
+    // uint32 max_size;
+    fwrite(&node->max_size, sizeof(uint32), 1, fp);
+    // uint8 base_addr[1];
+    fwrite(node->base_addr, sizeof(uint32), addr->size / sizeof(uint32), fp);
 }
+
 void
 dump_WASMTableInstanceT(Pool_Info *addr)
 {
     int i;
     fputc(WASMTableInstanceTT, fp);
-    fwrite(&addr->size, sizeof(size_t), 1, fp);
-    for (i = 0; i < addr->size; i++) {
-        int p_abs = addr->p_abs + i * sizeof(WASMTableInstance *);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    fwrite(&addr->size, sizeof(uint64), 1, fp);
+    fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
-        DUMP_PTR(addr->p_raw + i);
+    WASMTableInstance **raw = addr->p_raw;
+    for (i = 0; i < addr->size; i++) {
+        DUMP_PTR(raw);
+        raw++;
     }
 }
+
 void
 dump_WASMGlobalInstance(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMGlobalInstance);
-
-    for (i = 0; i < addr->size;
-         i++, node = (WASMGlobalInstance *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMGlobalInstance);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(WASMGlobalInstance){
+    fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         // uint8 type;
         fwrite(&node->type, sizeof(uint8), 1, fp);
@@ -1940,16 +1854,13 @@ dump_WASMGlobalInstance(Pool_Info *addr)
         }
     }
 }
+
 void
 dump_WASMExportFuncInstance(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMExportFuncInstance);
-
-    for (i = 0; i < addr->size;
-         i++, node = (WASMExportFuncInstance *)addr->p_raw + i) {
-        int p_abs = addr->p_abs + i * sizeof(WASMExportFuncInstance);
-        fwrite(&p_abs, sizeof(int), 1, fp);
+    HEADER(WASMExportFuncInstance){
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         //     char *name;
         DUMP_PTR(node->name);
@@ -1962,13 +1873,14 @@ void
 dump_WASMRuntimeFrame(Pool_Info *addr)
 {
     int i;
-    printf("Bug\n");
+    printf("WASMRuntimeFrame\n");
 }
 
 void
 dump_WASMOpcode(Pool_Info *addr)
 {
     int i;
+    printf("WASMOpcode\n");
     // enum
 }
 void

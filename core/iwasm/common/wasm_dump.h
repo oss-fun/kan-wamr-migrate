@@ -1,5 +1,7 @@
 #ifndef WASM_DUMP_H
 #define WASM_DUMP_H
+
+
 void
 init_dump(void *addr);
 

@@ -24,6 +24,10 @@ float generate_float(int iteration, double seed1, float seed2)
     for (int i=0; i<iteration; i++){
         ret += 1.0f/seed1 + seed2;
     }
+    for (int i = 0;;i++){
+        printf("%d\n", i);
+    }
+    printf("exit from WASM function: %s\n", __FUNCTION__);
 
     return ret;
 }

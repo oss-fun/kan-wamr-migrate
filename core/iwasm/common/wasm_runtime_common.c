@@ -1336,7 +1336,7 @@ wasm_runtime_call_wasm_a(WASMExecEnv *exec_env,
                                    "allocate memory failed");
         goto fail1;
     }
-    alloc_infos(argv, uint32T, (uint64)(cell_num > 2 ? cell_num : 2));
+    alloc_info_buf(argv, uint32T, total_size / sizeof(uint32));
 
     argc = parse_args_to_uint32_array(type, num_args, args, argv);
     if (!(ret = wasm_runtime_call_wasm(exec_env, function, argc, argv)))
@@ -1348,6 +1348,9 @@ wasm_runtime_call_wasm_a(WASMExecEnv *exec_env,
     (void)ret_num;
 
 fail2:
+#ifdef __FREE_DEBUG
+    printf("wasm_runtime_common:1352\n");
+#endif
     wasm_runtime_free(argv);
 fail1:
     return ret;
@@ -1417,6 +1420,9 @@ wasm_runtime_call_wasm_v(WASMExecEnv *exec_env,
     va_end(vargs);
     ret = wasm_runtime_call_wasm_a(exec_env, function, num_results, results,
                                    num_args, args);
+#ifdef __FREE_DEBUG
+    printf("wasm_runtime_common:1424\n");
+#endif
     wasm_runtime_free(args);
 
 fail1:
@@ -1569,7 +1575,7 @@ wasm_runtime_module_malloc(WASMModuleInstanceCommon *module_inst,
     if (module_inst->module_type == Wasm_Module_Bytecode)
         return wasm_module_malloc((WASMModuleInstance *)module_inst, size,
                                   p_native_addr);
-    alloc_infos(p_native_addr, uint8T, size);
+        //alloc_infos(p_native_addr, uint8T, size);
 #endif
 #if WASM_ENABLE_AOT != 0
     if (module_inst->module_type == Wasm_Module_AoT)
@@ -1981,9 +1987,9 @@ wasm_runtime_init_wasi(WASMModuleInstanceCommon *module_inst,
         goto fail;
     }
     if (argv_list)
-        alloc_infos(argv_list, charTT, total_size);
+        alloc_info_buf(argv_list, charTT, argc);
     if (argv_buf)
-        alloc_infos(argv_buf, charT, argv_buf_size);
+        alloc_info_buf(argv_buf, charT, argv_buf_size);
 
     for (i = 0; i < argc; i++) {
         argv_list[i] = argv_buf + argv_buf_offset;
@@ -2006,10 +2012,10 @@ wasm_runtime_init_wasi(WASMModuleInstanceCommon *module_inst,
                       "Init wasi environment failed: allocate memory failed");
         goto fail;
     }
-    if(env_list)
-    alloc_infos(env_list, charTT, total_size);
-    if(env_buf)
-    alloc_infos(env_buf, charT, env_buf_size);
+    if (env_list)
+        alloc_info_buf(env_list, charTT, env_count);
+    if (env_buf)
+        alloc_info_buf(env_buf, charT, env_buf_size);
 
     for (i = 0; i < env_count; i++) {
         env_list[i] = env_buf + env_buf_offset;
@@ -2107,20 +2113,48 @@ fail:
         fd_prestats_destroy(prestats);
     if (fd_table_inited)
         fd_table_destroy(curfds);
-    if (curfds)
+    if (curfds) {
+#ifdef __FREE_DEBUG
+        printf("wasm_runtime_common:2118\n");
+#endif
         wasm_runtime_free(curfds);
-    if (prestats)
+    }
+    if (prestats) {
+#ifdef __FREE_DEBUG
+        printf("wasm_runtime_common:2124\n");
+#endif
         wasm_runtime_free(prestats);
-    if (argv_environ)
+    }
+    if (argv_environ) {
+#ifdef __FREE_DEBUG
+        printf("wasm_runtime_common:2130\n");
+#endif
         wasm_runtime_free(argv_environ);
-    if (argv_buf)
+    }
+    if (argv_buf) {
+#ifdef __FREE_DEBUG
+        printf("wasm_runtime_common:2136\n");
+#endif
         wasm_runtime_free(argv_buf);
-    if (argv_list)
+    }
+    if (argv_list) {
+#ifdef __FREE_DEBUG
+        printf("wasm_runtime_common:2142\n");
+#endif
         wasm_runtime_free(argv_list);
-    if (env_buf)
+    }
+    if (env_buf) {
+#ifdef __FREE_DEBUG
+        printf("wasm_runtime_common:2148\n");
+#endif
         wasm_runtime_free(env_buf);
-    if (env_list)
+    }
+    if (env_list) {
+#ifdef __FREE_DEBUG
+        printf("wasm_runtime_common:2154\n");
+#endif
         wasm_runtime_free(env_list);
+    }
     return false;
 }
 #else  /* else of WASM_ENABLE_UVWASI == 0 */
@@ -2228,7 +2262,7 @@ wasm_runtime_init_wasi(WASMModuleInstanceCommon *module_inst,
         if (envp == NULL)
             goto fail;
 
-        alloc_infos(envp, charTT, env_count + 1);
+        alloc_info_buf(envp, charTT, env_count + 1);
 
         for (i = 0; i < env_count; i++) {
             envp[i] = env[i];
@@ -2335,24 +2369,52 @@ wasm_runtime_destroy_wasi(WASMModuleInstanceCommon *module_inst)
     if (wasi_ctx) {
         if (wasi_ctx->argv_environ) {
             argv_environ_destroy(wasi_ctx->argv_environ);
+#ifdef __FREE_DEBUG
+            printf("wasm_runtime_common:2373\n");
+#endif
             wasm_runtime_free(wasi_ctx->argv_environ);
         }
         if (wasi_ctx->curfds) {
             fd_table_destroy(wasi_ctx->curfds);
+#ifdef __FREE_DEBUG
+            printf("wasm_runtime_common:2380\n");
+#endif
             wasm_runtime_free(wasi_ctx->curfds);
         }
         if (wasi_ctx->prestats) {
             fd_prestats_destroy(wasi_ctx->prestats);
+#ifdef __FREE_DEBUG
+            printf("wasm_runtime_common:2387\n");
+#endif
             wasm_runtime_free(wasi_ctx->prestats);
         }
-        if (wasi_ctx->argv_buf)
+        if (wasi_ctx->argv_buf) {
+#ifdef __FREE_DEBUG
+            printf("wasm_runtime_common:2393\n");
+#endif
             wasm_runtime_free(wasi_ctx->argv_buf);
-        if (wasi_ctx->argv_list)
+        }
+        if (wasi_ctx->argv_list) {
+#ifdef __FREE_DEBUG
+            printf("wasm_runtime_common:2399\n");
+#endif
             wasm_runtime_free(wasi_ctx->argv_list);
-        if (wasi_ctx->env_buf)
+        }
+        if (wasi_ctx->env_buf) {
+#ifdef __FREE_DEBUG
+            printf("wasm_runtime_common:2405\n");
+#endif
             wasm_runtime_free(wasi_ctx->env_buf);
-        if (wasi_ctx->env_list)
+        }
+        if (wasi_ctx->env_list) {
+#ifdef __FREE_DEBUG
+            printf("wasm_runtime_common:2411\n");
+#endif
             wasm_runtime_free(wasi_ctx->env_list);
+        }
+#ifdef __FREE_DEBUG
+        printf("wasm_runtime_common:2416\n");
+#endif
         wasm_runtime_free(wasi_ctx);
     }
 }
@@ -2427,7 +2489,6 @@ wasm_runtime_register_natives(const char *module_name,
                               NativeSymbol *native_symbols,
                               uint32 n_native_symbols)
 {
-    printf("symbol runtime\n");
     return wasm_native_register_natives(module_name, native_symbols,
                                         n_native_symbols);
 }
@@ -2466,7 +2527,7 @@ wasm_runtime_invoke_native_raw(WASMExecEnv *exec_env,
                                      0))) {
             return false;
         }
-        alloc_infos(argv1, uint64T, argc1);
+        alloc_info_buf(argv1, uint64T, argc1);
     }
 
     argv_dst = argv1;
@@ -2559,8 +2620,12 @@ wasm_runtime_invoke_native_raw(WASMExecEnv *exec_env,
     ret = !wasm_runtime_get_exception(module) ? true : false;
 
 fail:
-    if (argv1 != argv_buf)
+    if (argv1 != argv_buf) {
+#ifdef __FREE_DEBUG
+        printf("wasm_runtime_common:2625\n");
+#endif
         wasm_runtime_free(argv1);
+    }
     return ret;
 }
 
@@ -2751,7 +2816,7 @@ wasm_runtime_invoke_native(WASMExecEnv *exec_env,
                                      0))) {
             return false;
         }
-        alloc_infos(argv1, uint32T, argc1);
+        alloc_info_buf(argv1, uint32T, argc1);
     }
 
     ints = argv1;
@@ -3058,7 +3123,7 @@ wasm_runtime_invoke_native(WASMExecEnv *exec_env,
                                      0))) {
             return false;
         }
-        alloc_infos(argv1, uint32T, argc1);
+        alloc_info_buf(argv1, uint32T, argc1);
     }
 
     for (i = 0; i < sizeof(WASMExecEnv *) / sizeof(uint32); i++)
@@ -3294,7 +3359,7 @@ wasm_runtime_invoke_native(WASMExecEnv *exec_env,
                                      0))) {
             return false;
         }
-        alloc_infos(argv1, uint64T, argc1);
+        alloc_info_buf(argv1, uint64T, argc1);
     }
 
 #ifndef BUILD_TARGET_RISCV64_LP64
@@ -4301,9 +4366,17 @@ wasm_runtime_invoke_c_api_native(WASMModuleInstanceCommon *module_inst,
     ret = true;
 
 fail:
-    if (params != params_buf)
+    if (params != params_buf) {
+#ifdef __FREE_DEBUG
+        printf("wasm_runtime_common:4371\n");
+#endif
         wasm_runtime_free(params);
-    if (results != results_buf)
+    }
+    if (results != results_buf) {
+#ifdef __FREE_DEBUG
+        printf("wasm_runtime_common:4377\n");
+#endif
         wasm_runtime_free(results);
+    }
     return ret;
 }

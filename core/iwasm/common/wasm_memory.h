@@ -131,6 +131,7 @@ typedef enum Data_Type {
     WASMMiscEXTOpcodeT,
     WASMSimdEXTOpcodeT,
     WASMAtomicEXTOpcodeT,
+    DUMMYT,
     ERRORT
 } Data_Type;
 
@@ -139,11 +140,17 @@ typedef struct Pool_Info {
     void *p_raw;
     size_t size;
     Data_Type type;
+    struct Pool_Info *list;
+    struct Pool_Info *next;
 } Pool_Info;
 void
 dump_runtime(void);
 void
 alloc_info(void *addr, Data_Type type);
+void
+alloc_info_buf(void *addr, Data_Type type, size_t buf_size);
+void
+alloc_info_ex(void *addr, Data_Type type, size_t size);
 void
 alloc_infos(void *addr, Data_Type type, size_t size);
 void

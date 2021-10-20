@@ -661,13 +661,19 @@ wasm_application_execute_func(WASMModuleInstanceCommon *module_inst,
             os_printf(",");
     }
     os_printf("\n");
-
+    #ifdef __FREE_DEBUG
+    printf("excute:664\n");
+    #endif
     wasm_runtime_free(argv1);
     return true;
 
 fail:
-    if (argv1)
+    if (argv1){
+        #ifdef __FREE_DEBUG
+        printf("wasm_application:670\n");
+        #endif
         wasm_runtime_free(argv1);
+    }
 
     exception = wasm_runtime_get_exception(module_inst);
     bh_assert(exception);

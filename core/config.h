@@ -5,6 +5,7 @@
 
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
+//#define __FREE_DEBUG
 
 #if !defined(BUILD_TARGET_X86_64) \
     && !defined(BUILD_TARGET_AMD_64) \

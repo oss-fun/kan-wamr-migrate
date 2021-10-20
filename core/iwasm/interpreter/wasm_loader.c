@@ -397,7 +397,7 @@ const_str_list_insert(const uint8 *str,
                                error_buf_size))) {
         return NULL;
     }
-    alloc_infos(node, StringNodeT, len + 1);
+    alloc_info_ex(node, StringNodeT, len + 1);
 
     node->str = ((char *)node) + sizeof(StringNode);
     bh_memcpy_s(node->str, len + 1, str, len);
@@ -569,7 +569,7 @@ load_type_section(const uint8 *buf,
                 loader_malloc(total_size, error_buf, error_buf_size))) {
             return false;
         }
-        alloc_infos(module->types, WASMTypeTT, type_count);
+        alloc_info_buf(module->types, WASMTypeTT, type_count);
 
         for (i = 0; i < type_count; i++) {
             CHECK_BUF(p, p_end, 1);
@@ -602,7 +602,9 @@ load_type_section(const uint8 *buf,
                     loader_malloc(total_size, error_buf, error_buf_size))) {
                 return false;
             }
-            alloc_infos(type, WASMTypeT, sizeof(uint8) * (uint64)(param_count + result_count));
+            alloc_info_ex(type, WASMTypeT,
+                          sizeof(uint8)
+                            * (uint64)(param_count + result_count));
 
             /* Resolve param types and result types */
             type->param_count = (uint16)param_count;
@@ -1865,7 +1867,7 @@ init_function_local_offsets(WASMFunction *func,
                loader_malloc(total_size, error_buf, error_buf_size))) {
         return false;
     }
-    alloc_infos(func->local_offsets, uint16T, param_count + local_count);
+    alloc_info_buf(func->local_offsets, uint16T, param_count + local_count);
 
     for (i = 0; i < param_count; i++) {
         func->local_offsets[i] = (uint16)local_offset;
@@ -1918,7 +1920,7 @@ load_function_section(const uint8 *buf,
                 loader_malloc(total_size, error_buf, error_buf_size))) {
             return false;
         }
-        alloc_infos(module->functions, WASMFunctionTT, func_count);
+        alloc_info_buf(module->functions, WASMFunctionTT, func_count);
 
         for (i = 0; i < func_count; i++) {
             /* Resolve function type */
@@ -1968,7 +1970,7 @@ load_function_section(const uint8 *buf,
                     loader_malloc(total_size, error_buf, error_buf_size))) {
                 return false;
             }
-            alloc_infos(func, WASMFunctionT, local_count);
+            alloc_info_ex(func, WASMFunctionT, local_count);
             //alloc_infos(func + sizeof(WASMFunction), uint8T, local_count);
 
             /* Set function type, local count, code size and code body */
@@ -1987,7 +1989,11 @@ load_function_section(const uint8 *buf,
              * memcpy(code_body_cp, p_code, code_size);
              * func->code = code_body_cp;
              */
-            func->code = loader_malloc(code_size, error_buf, error_buf_size);
+            if (!(func->code =
+                    loader_malloc(code_size, error_buf, error_buf_size))) {
+                return false;
+            }
+            alloc_info_buf(func->code, uint8T, code_size);
             memcpy(func->code, p_code, code_size);
             //func->code = (uint8 *)p_code;
 
@@ -2457,7 +2463,7 @@ load_func_index_vec(const uint8 **p_buf,
                total_size, error_buf, error_buf_size))) {
         return false;
     }
-    alloc_infos(table_segment->func_indexes, uint32T, function_count);
+    alloc_info_buf(table_segment->func_indexes, uint32T, function_count);
 
     for (i = 0; i < function_count; i++) {
         InitializerExpression init_expr = { 0 };
@@ -2675,7 +2681,7 @@ load_data_segment_section(const uint8 *buf,
                 loader_malloc(total_size, error_buf, error_buf_size))) {
             return false;
         }
-        alloc_infos(module->data_segments, WASMDataSegTT, data_seg_count);
+        alloc_info_buf(module->data_segments, WASMDataSegTT, data_seg_count);
 
         for (i = 0; i < data_seg_count; i++) {
             read_leb_uint32(p, p_end, mem_index);
@@ -3422,6 +3428,9 @@ destroy_sections(WASMSection *section_list)
     WASMSection *section = section_list, *next;
     while (section) {
         next = section->next;
+#ifdef __FREE_DEBUG
+        printf("wasm_loader:3432\n");
+#endif
         wasm_runtime_free(section);
         section = next;
     }
@@ -3496,7 +3505,7 @@ create_sections(const uint8 *buf,
                     loader_malloc(section_size, error_buf, error_buf_size))) {
                 return false;
             }
-            alloc_infos(section->section_body, uint8T, section_size);
+            alloc_info_buf(section->section_body, uint8T, section_size);
 
             section->section_type = section_type;
             bh_memcpy_s(section->section_body, section_size, p, section_size);
@@ -3619,57 +3628,116 @@ wasm_loader_unload(WASMModule *module)
 
     if (module->types) {
         for (i = 0; i < module->type_count; i++) {
-            if (module->types[i])
+            if (module->types[i]) {
+#ifdef __FREE_DEBUG
+                printf("wasm_loader:3633\n");
+#endif
                 wasm_runtime_free(module->types[i]);
+            }
         }
+#ifdef __FREE_DEBUG
+        printf("wasm_loader:3639\n");
+#endif
         wasm_runtime_free(module->types);
     }
 
-    if (module->imports)
+    if (module->imports) {
+#ifdef __FREE_DEBUG
+        printf("wasm_loader:3646\n");
+#endif
         wasm_runtime_free(module->imports);
+    }
 
     if (module->functions) {
         for (i = 0; i < module->function_count; i++) {
             if (module->functions[i]) {
-                if (module->functions[i]->local_offsets)
+                if (module->functions[i]->local_offsets) {
+#ifdef __FREE_DEBUG
+                    printf("wasm_loader:3656\n");
+#endif
                     wasm_runtime_free(module->functions[i]->local_offsets);
+                }
 #if WASM_ENABLE_FAST_INTERP != 0
-                if (module->functions[i]->code_compiled)
+                if (module->functions[i]->code_compiled) {
+#ifdef __FREE_DEBUG
+                    printf("wasm_loader:3663\n");
+#endif
                     wasm_runtime_free(module->functions[i]->code_compiled);
-                if (module->functions[i]->consts)
+                }
+                if (module->functions[i]->consts) {
+#ifdef __FREE_DEBUG
+                    printf("wasm_loader:3669\n");
+#endif
                     wasm_runtime_free(module->functions[i]->consts);
+                }
+#endif
+#ifdef __FREE_DEBUG
+                printf("wasm_loader:3675\n");
 #endif
                 wasm_runtime_free(module->functions[i]);
             }
         }
+#ifdef __FREE_DEBUG
+        printf("wasm_loader:3681\n");
+#endif
         wasm_runtime_free(module->functions);
     }
 
-    if (module->tables)
+    if (module->tables) {
+#ifdef __FREE_DEBUG
+        printf("wasm_loader:3688\n");
+#endif
         wasm_runtime_free(module->tables);
+    }
 
-    if (module->memories)
+    if (module->memories) {
+#ifdef __FREE_DEBUG
+        printf("wasm_loader:3695\n");
+#endif
         wasm_runtime_free(module->memories);
+    }
 
-    if (module->globals)
+    if (module->globals) {
+#ifdef __FREE_DEBUG
+        printf("wasm_loader:3702\n");
+#endif
         wasm_runtime_free(module->globals);
+    }
 
-    if (module->exports)
+    if (module->exports) {
+#ifdef __FREE_DEBUG
+        printf("wasm_loader:3709\n");
+#endif
         wasm_runtime_free(module->exports);
+    }
 
     if (module->table_segments) {
         for (i = 0; i < module->table_seg_count; i++) {
-            if (module->table_segments[i].func_indexes)
+            if (module->table_segments[i].func_indexes) {
+#ifdef __FREE_DEBUG
+                printf("wasm_loader:3718\n");
+#endif
                 wasm_runtime_free(module->table_segments[i].func_indexes);
+            }
         }
+#ifdef __FREE_DEBUG
+        printf("wasm_loader:3724\n");
+#endif
         wasm_runtime_free(module->table_segments);
     }
 
     if (module->data_segments) {
         for (i = 0; i < module->data_seg_count; i++) {
-            if (module->data_segments[i])
+            if (module->data_segments[i]) {
+#ifdef __FREE_DEBUG
+                printf("wasm_loader:3733\n");
+#endif
                 wasm_runtime_free(module->data_segments[i]);
+            }
         }
+#ifdef __FREE_DEBUG
+        printf("wasm_loader:3739\n");
+#endif
         wasm_runtime_free(module->data_segments);
     }
 
@@ -3677,6 +3745,9 @@ wasm_loader_unload(WASMModule *module)
         StringNode *node = module->const_str_list, *node_next;
         while (node) {
             node_next = node->next;
+#ifdef __FREE_DEBUG
+            printf("wasm_loader:3749\n");
+#endif
             wasm_runtime_free(node);
             node = node_next;
         }
@@ -3705,7 +3776,9 @@ wasm_loader_unload(WASMModule *module)
         }
     }
 #endif
-
+#ifdef __FREE_DEBUG
+    printf("wasm_loader:3780\n");
+#endif
     wasm_runtime_free(module);
 }
 
@@ -4321,9 +4394,12 @@ memory_realloc(void *mem_old,
     uint8 *mem_new;
     bh_assert(size_new > size_old);
     if ((mem_new = loader_malloc(size_new, error_buf, error_buf_size))) {
-        alloc_infos(mem_new, uint8T, size_new);
+        alloc_info_buf(mem_new, uint8T, size_new);
         bh_memcpy_s(mem_new, size_new, mem_old, size_old);
         memset(mem_new + size_old, 0, size_new - size_old);
+#ifdef __FREE_DEBUG
+        printf("wasm_loader:4401\n");
+#endif
         wasm_runtime_free(mem_old);
     }
 
@@ -4398,6 +4474,9 @@ free_label_patch_list(BranchBlock *frame_csp)
     BranchBlockPatch *next;
     while (label_patch != NULL) {
         next = label_patch->next;
+#ifdef __FREE_DEBUG
+        printf("wasm_loader:4478\n");
+#endif
         wasm_runtime_free(label_patch);
         label_patch = next;
     }
@@ -4502,15 +4581,19 @@ wasm_loader_ctx_destroy(WASMLoaderContext *ctx)
 {
     if (ctx) {
         if (ctx->frame_ref_bottom) {
+#ifdef __FREE_DEBUG
+            printf("wasm_loader:4585\n");
+#endif
             wasm_runtime_free(ctx->frame_ref_bottom);
-            free_info(ctx->frame_ref_bottom);
         }
         if (ctx->frame_csp_bottom) {
 #if WASM_ENABLE_FAST_INTERP != 0
             free_all_label_patch_lists(ctx->frame_csp_bottom, ctx->csp_num);
 #endif
+#ifdef __FREE_DEBUG
+            printf("wasm_loader:4594\n");
+#endif
             wasm_runtime_free(ctx->frame_csp_bottom);
-            free_info(ctx->frame_csp_bottom);
         }
 #if WASM_ENABLE_FAST_INTERP != 0
         if (ctx->frame_offset_bottom)
@@ -4518,8 +4601,10 @@ wasm_loader_ctx_destroy(WASMLoaderContext *ctx)
         if (ctx->const_buf)
             wasm_runtime_free(ctx->const_buf);
 #endif
+#ifdef __FREE_DEBUG
+        printf("wasm_loader:4605\n");
+#endif
         wasm_runtime_free(ctx);
-        free_info(ctx);
     }
 }
 
@@ -4537,8 +4622,8 @@ wasm_loader_ctx_init(WASMFunction *func)
     if (!(loader_ctx->frame_ref_bottom = loader_ctx->frame_ref =
             wasm_runtime_malloc(loader_ctx->frame_ref_size)))
         goto fail;
-    alloc_infos(loader_ctx->frame_ref_bottom, uint8T,
-                loader_ctx->frame_ref_size);
+    alloc_info_buf(loader_ctx->frame_ref_bottom, uint8T,
+                   loader_ctx->frame_ref_size);
     memset(loader_ctx->frame_ref_bottom, 0, loader_ctx->frame_ref_size);
     loader_ctx->frame_ref_boundary =
       loader_ctx->frame_ref_bottom + loader_ctx->frame_ref_size;
@@ -4547,8 +4632,7 @@ wasm_loader_ctx_init(WASMFunction *func)
     if (!(loader_ctx->frame_csp_bottom = loader_ctx->frame_csp =
             wasm_runtime_malloc(loader_ctx->frame_csp_size)))
         goto fail;
-    alloc_infos(loader_ctx->frame_csp_bottom, uint8T,
-                loader_ctx->frame_csp_size);
+    alloc_infos(loader_ctx->frame_csp_bottom, BranchBlockT, 8);
     memset(loader_ctx->frame_csp_bottom, 0, loader_ctx->frame_csp_size);
     loader_ctx->frame_csp_boundary = loader_ctx->frame_csp_bottom + 8;
 
@@ -4715,8 +4799,12 @@ wasm_loader_pop_frame_csp(WASMLoaderContext *ctx,
 {
     CHECK_CSP_POP();
 #if WASM_ENABLE_FAST_INTERP != 0
-    if ((ctx->frame_csp - 1)->param_frame_offsets)
+    if ((ctx->frame_csp - 1)->param_frame_offsets) {
+#ifdef __FREE_DEBUG
+        printf("wasm_loader:4804\n");
+#endif
         wasm_runtime_free((ctx->frame_csp - 1)->param_frame_offsets);
+    }
 #endif
     ctx->frame_csp--;
     ctx->csp_num--;
@@ -5122,6 +5210,9 @@ apply_label_patch(WASMLoaderContext *ctx, uint8 depth, uint8 patch_type)
             else {
                 node_prev->next = node_next;
             }
+            #ifdef __FREE_DEBUG
+        printf("wasm_loader:5214\n");
+#endif
             wasm_runtime_free(node);
         }
         else {
@@ -5722,7 +5813,9 @@ reserve_block_ret(WASMLoaderContext *loader_ctx,
 
         if (opcode == WASM_OP_ELSE)
             emit_label(opcode);
-
+#ifdef __FREE_DEBUG
+        printf("wasm_loader:5817\n");
+#endif
         wasm_runtime_free(emit_data);
     }
 
@@ -6236,6 +6329,9 @@ copy_params_to_dynamic_space(WASMLoaderContext *loader_ctx,
     if (is_if_block)
         PUSH_OFFSET_TYPE(VALUE_TYPE_I32);
 
+#ifdef __FREE_DEBUG
+        printf("wasm_loader:6333\n");
+#endif
     /* Free the emit data */
     wasm_runtime_free(emit_data);
 

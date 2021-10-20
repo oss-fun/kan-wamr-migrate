@@ -37,10 +37,9 @@ static unsigned int global_pool_size;
 
 #define MAX_LIST_SIZE 512 * 1024
 
-static Pool_Info **root_info = NULL;
-static Pool_Info *pool_list[MAX_LIST_SIZE] = {};
+static Pool_Info *root_info = NULL;
 
-static void (*dump_data[])(Pool_Info *addr);
+static void (*dump_data[ERRORT])(Pool_Info *addr);
 
 static void
 init_dump_func(void)
@@ -143,66 +142,120 @@ init_dump_func(void)
 
 #define CASE_INFOS(data_type)                                                 \
     case data_type##T:                                                        \
-        info = malloc(sizeof(Pool_Info));                                     \
-        info->p_abs = addr - pool_allocator;                                  \
-        info->p_raw = addr;                                                   \
-        info->size = size;                                                    \
-        info->type = type;                                                    \
-        pool_list[info->p_abs] = info;                                        \
+        for (i = 1; i < size; i++) {                                          \
+            info = malloc(sizeof(Pool_Info));                                 \
+            info->p_abs = addr - pool_allocator + i * sizeof(data_type);      \
+            info->p_raw = addr + i * sizeof(data_type);                       \
+            info->size = -1;                                                  \
+            info->type = type;                                                \
+            info->list = NULL;                                                \
+            info->next = NULL;                                                \
+            p->list = info;                                                   \
+            p = p->list;                                                      \
+        }                                                                     \
         break;
 
 void
 dump_runtime(void)
 {
+    Pool_Info *info = root_info;
     int i;
-    init_dump(pool_allocator);
+
     init_dump_func();
-    for (i = 0; i < MAX_LIST_SIZE; i++) {
+    init_dump(pool_allocator);
+
+    /*for (i = 0; i < MAX_LIST_SIZE; i++) {
         if (pool_list[i] != 0) {
-            printf("dump:[%d]\n",pool_list[i]->type);
+            printf("dump[%d]\n", pool_list[i]->type);
             (*dump_data[pool_list[i]->type])(pool_list[i]);
         }
+    }*/
+    printf("A\n");
+    while (info) {
+        if (info->type != DUMMYT) {
+            printf("B:%d\n", info->type);
+            (*dump_data[info->type])(info);
+            printf("C\n");
+        }
+        info = info->next;
     }
 }
 
 void
 alloc_info(void *addr, Data_Type type)
 {
-    if (type == WASMLoaderContextT) {
-        printf("alloc LoaderCtx\n");
-    }
+    alloc_info_buf(addr, type, 1);
+}
 
+void
+alloc_info_buf(void *addr, Data_Type type, size_t buf_size)
+{
+    if (!addr) {
+        return;
+    }
+#ifdef __FREE_DEBUG
+    printf("buf:[%p]:[%d]:[%ld]\n", addr, type, buf_size);
+#endif
     Pool_Info *info = malloc(sizeof(Pool_Info));
     info->p_abs = addr - pool_allocator;
-
     info->p_raw = addr;
-
-    info->size = 1;
-
+    info->size = buf_size;
     info->type = type;
+    info->list = NULL;
 
-    pool_list[info->p_abs] = info;
+    info->next = root_info;
+    root_info = info;
+}
+
+void
+alloc_info_ex(void *addr, Data_Type type, size_t size)
+{
+    if (!addr) {
+        return;
+    }
+#ifdef __FREE_DEBUG
+    printf("ex:[%p]:[%d]:[%ld]\n", addr, type, size);
+#endif
+    Pool_Info *info = malloc(sizeof(Pool_Info));
+    info->p_abs = addr - pool_allocator;
+    info->p_raw = addr;
+    info->size = size;
+    info->type = type;
+    info->list = NULL;
+
+    info->next = root_info;
+    root_info = info;
 }
 
 void
 alloc_infos(void *addr, Data_Type type, size_t size)
 {
-    Pool_Info *info;
-    size_t i;
-
-    if (type == WASMLoaderContextT) {
-        printf("alloc LoaderCtx\n");
+    int i;
+    if (!addr) {
+        return;
     }
+#ifdef __FREE_DEBUG
+    printf("s:[%p]:[%d]:[%ld]\n", addr, type, size);
+#endif
+    Pool_Info *info, *p;
+    info = malloc(sizeof(Pool_Info));
+    info->p_abs = addr - pool_allocator;
+    info->p_raw = addr;
+    info->size = size;
+    info->type = type;
+    info->list = NULL;
+    info->next = root_info;
+    root_info = info;
+    p = root_info;
+
     switch (type) {
         CASE_INFOS(char)
-        CASE_INFOS(charT)
         CASE_INFOS(uint8)
         CASE_INFOS(uint16)
         CASE_INFOS(uint32)
         CASE_INFOS(uint64)
 
         CASE_INFOS(gc_heap_t)
-        //CASE_INFOS(base_addr)
         CASE_INFOS(WASIContext)
         //CASE_INFOS(WASMThreadArg)
         //CASE_INFOS(ExternRefMapNode)
@@ -231,14 +284,12 @@ alloc_infos(void *addr, Data_Type type, size_t size)
 
         CASE_INFOS(WASMModule)
         CASE_INFOS(WASMFunction)
-        CASE_INFOS(WASMFunctionT)
         CASE_INFOS(WASMGlobal)
         CASE_INFOS(WASMExport)
         CASE_INFOS(V128)
         CASE_INFOS(WASMValue)
         CASE_INFOS(InitializerExpression)
         CASE_INFOS(WASMType)
-        CASE_INFOS(WASMTypeT)
         CASE_INFOS(WASMTable)
         CASE_INFOS(WASMMemory)
         CASE_INFOS(WASMTableImport)
@@ -248,7 +299,6 @@ alloc_infos(void *addr, Data_Type type, size_t size)
         CASE_INFOS(WASMImport)
         CASE_INFOS(WASMTableSeg)
         CASE_INFOS(WASMDataSeg)
-        CASE_INFOS(WASMDataSegT)
         CASE_INFOS(BlockAddr)
         CASE_INFOS(WASIArguments)
         CASE_INFOS(StringNode)
@@ -265,9 +315,7 @@ alloc_infos(void *addr, Data_Type type, size_t size)
 
         CASE_INFOS(WASMFunctionInstance)
         CASE_INFOS(WASMMemoryInstance)
-        CASE_INFOS(WASMMemoryInstanceT)
         CASE_INFOS(WASMTableInstance)
-        CASE_INFOS(WASMTableInstanceT)
         CASE_INFOS(WASMGlobalInstance)
         CASE_INFOS(WASMExportFuncInstance)
         CASE_INFOS(WASMRuntimeFrame)
@@ -284,13 +332,52 @@ alloc_infos(void *addr, Data_Type type, size_t size)
 void
 free_info(void *addr)
 {
-    if (pool_list[addr - pool_allocator] != 0) {
-        if (pool_list[addr - pool_allocator]->type == WASMLoaderContextT) {
-            printf("free LoaderCtx\n");
+    int i, j;
+    Pool_Info *info, *prev, *p;
+
+    info = root_info;
+    prev = NULL;
+    while (info) {
+        if (info->p_raw == addr) {
+            while (info->list) {
+                p = info->list->list;
+                //printf("free[%p]\n", info->list);
+                free(info->list);
+
+                info->list = p;
+            }
+
+            if (prev == NULL) {
+                root_info = info->next;
+            }
+            else {
+                prev->next = info->next;
+            }
+            //printf("free[%p]\n", info);
+            free(info);
+            return;
         }
-        free(pool_list[addr - pool_allocator]);
-        pool_list[addr - pool_allocator] = 0;
+        prev = info;
+        info = info->next;
     }
+    printf("free error[%p]\n", addr);
+
+    info = root_info;
+    prev = NULL;
+    while (info) {
+        p = info->list;
+        while (p) {
+            if (p == addr) {
+                printf("found\n");
+                return;
+            }
+            p = p->list;
+        }
+
+        prev = info;
+        info = info->next;
+    }
+    exit(1);
 }
 
 static bool
@@ -430,7 +517,13 @@ wasm_runtime_malloc(unsigned int size)
 void *
 wasm_runtime_realloc(void *ptr, unsigned int size)
 {
-    return wasm_runtime_realloc_internal(ptr, size);
+    void *ret = wasm_runtime_realloc_internal(ptr, size);
+
+    if (ret) {
+        printf("realloc\n");
+        free_info(ptr);
+    }
+    return ret;
 }
 
 void
