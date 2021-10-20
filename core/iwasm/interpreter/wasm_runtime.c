@@ -904,7 +904,9 @@ export_functions_instantiate(const WASMModule *module,
             runtime_malloc(total_size, error_buf, error_buf_size))) {
         return NULL;
     }
-    alloc_infos(export_func, WASMExportFuncInstanceT, export_func_count);
+    if (total_size > 0) {
+        alloc_infos(export_func, WASMExportFuncInstanceT, export_func_count);
+    }
 
     for (i = 0; i < module->export_count; i++, export ++)
         if (export->kind == EXPORT_KIND_FUNC) {

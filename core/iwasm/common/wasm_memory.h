@@ -143,6 +143,9 @@ typedef struct Pool_Info {
     struct Pool_Info *list;
     struct Pool_Info *next;
 } Pool_Info;
+
+void
+print_WASMExport(void);
 void
 dump_runtime(void);
 void

@@ -151,9 +151,40 @@ init_dump_func(void)
             info->list = NULL;                                                \
             info->next = NULL;                                                \
             p->list = info;                                                   \
-            p = p->list;                                                      \
+            p = info;                                                         \
         }                                                                     \
         break;
+
+void
+print_WASMExport_internal(Pool_Info *info)
+{
+    printf("print_WASMExport_internal\n");
+    while (info) {
+        WASMExport *export = (WASMExport *)info->p_raw;
+        printf("name[%p]:%s\n", export->name, export->name);
+        info = info->list;
+    }
+    return;
+}
+
+void
+print_WASMExport(void)
+{
+    Pool_Info *info, *p;
+    info = root_info;
+
+    while (info) {
+        if (info->type == WASMExportT) {
+            while (info) {
+                WASMExport *export = (WASMExport *)info->p_raw;
+                printf("name[%p]:%s\n", export->name, export->name);
+                info = info->list;
+            }
+            return;
+        }
+        info = info->next;
+    }
+}
 
 void
 dump_runtime(void)
@@ -164,12 +195,6 @@ dump_runtime(void)
     init_dump_func();
     init_dump(pool_allocator);
 
-    /*for (i = 0; i < MAX_LIST_SIZE; i++) {
-        if (pool_list[i] != 0) {
-            printf("dump[%d]\n", pool_list[i]->type);
-            (*dump_data[pool_list[i]->type])(pool_list[i]);
-        }
-    }*/
     printf("A\n");
     while (info) {
         if (info->type != DUMMYT) {
@@ -191,7 +216,8 @@ void
 alloc_info_buf(void *addr, Data_Type type, size_t buf_size)
 {
     if (!addr) {
-        return;
+        printf("error\n");
+        exit(1);
     }
 #ifdef __FREE_DEBUG
     printf("buf:[%p]:[%d]:[%ld]\n", addr, type, buf_size);
@@ -211,7 +237,8 @@ void
 alloc_info_ex(void *addr, Data_Type type, size_t size)
 {
     if (!addr) {
-        return;
+        printf("error\n");
+        exit(1);
     }
 #ifdef __FREE_DEBUG
     printf("ex:[%p]:[%d]:[%ld]\n", addr, type, size);
@@ -232,7 +259,8 @@ alloc_infos(void *addr, Data_Type type, size_t size)
 {
     int i;
     if (!addr) {
-        return;
+        printf("error\n");
+        exit(1);
     }
 #ifdef __FREE_DEBUG
     printf("s:[%p]:[%d]:[%ld]\n", addr, type, size);

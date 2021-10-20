@@ -1867,7 +1867,10 @@ init_function_local_offsets(WASMFunction *func,
                loader_malloc(total_size, error_buf, error_buf_size))) {
         return false;
     }
-    alloc_info_buf(func->local_offsets, uint16T, param_count + local_count);
+    if (total_size > 0) {
+        alloc_info_buf(func->local_offsets, uint16T,
+                       param_count + local_count);
+    }
 
     for (i = 0; i < param_count; i++) {
         func->local_offsets[i] = (uint16)local_offset;
@@ -2276,7 +2279,6 @@ load_export_section(const uint8 *buf,
             return false;
         }
         alloc_infos(module->exports, WASMExportT, export_count);
-
         export = module->exports;
         for (i = 0; i < export_count; i++, export ++) {
             read_leb_uint32(p, p_end, str_len);
@@ -2352,7 +2354,6 @@ load_export_section(const uint8 *buf,
             }
         }
     }
-
     if (p != p_end) {
         set_error_buf(error_buf, error_buf_size, "section size mismatch");
         return false;
@@ -2463,7 +2464,9 @@ load_func_index_vec(const uint8 **p_buf,
                total_size, error_buf, error_buf_size))) {
         return false;
     }
-    alloc_info_buf(table_segment->func_indexes, uint32T, function_count);
+    if (total_size > 0) {
+        alloc_info_buf(table_segment->func_indexes, uint32T, function_count);
+    }
 
     for (i = 0; i < function_count; i++) {
         InitializerExpression init_expr = { 0 };
@@ -5210,8 +5213,8 @@ apply_label_patch(WASMLoaderContext *ctx, uint8 depth, uint8 patch_type)
             else {
                 node_prev->next = node_next;
             }
-            #ifdef __FREE_DEBUG
-        printf("wasm_loader:5214\n");
+#ifdef __FREE_DEBUG
+            printf("wasm_loader:5214\n");
 #endif
             wasm_runtime_free(node);
         }
@@ -6330,7 +6333,7 @@ copy_params_to_dynamic_space(WASMLoaderContext *loader_ctx,
         PUSH_OFFSET_TYPE(VALUE_TYPE_I32);
 
 #ifdef __FREE_DEBUG
-        printf("wasm_loader:6333\n");
+    printf("wasm_loader:6333\n");
 #endif
     /* Free the emit data */
     wasm_runtime_free(emit_data);

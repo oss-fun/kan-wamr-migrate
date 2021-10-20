@@ -23,8 +23,8 @@ static unsigned long base;
 #define HEADER(Type)                                                          \
     fputc(Type##T, fp);                                                       \
     fwrite(&addr->size, sizeof(uint64), 1, fp);                               \
-    for (Type *node = (Type *)addr->p_raw; addr != NULL;                      \
-         addr = addr->list, node = addr)
+    for (Type *node = (Type *)addr->p_raw; addr != NULL; addr = addr->list,   \
+              node = (addr != NULL) ? (Type *)addr->p_raw : NULL)
 
 #define DUMP_PTR(attr)                                                        \
     do {                                                                      \
@@ -157,6 +157,9 @@ void
 dump_WASIContext(Pool_Info *addr)
 {
     int i;
+    printf("skip WASIContext\n");
+    return;
+#if WASM_ENABLE_LIBC_WASI != 0
     HEADER(WASIContext)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -193,6 +196,7 @@ dump_WASIContext(Pool_Info *addr)
         //char **env_list;
         DUMP_PTR(node->env_list);
     }
+#endif
 }
 
 void
@@ -923,12 +927,14 @@ void
 dump_WASMExport(Pool_Info *addr)
 {
     int i;
+
     HEADER(WASMExport)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         //char *name; stringnodeの途中を指す
         fputs(node->name, fp);
+
         //uint8 kind;
         fwrite(&node->kind, sizeof(uint8), 1, fp);
         //uint32 index;
@@ -1795,8 +1801,9 @@ void
 dump_WASMGlobalInstance(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMGlobalInstance){
-    fwrite(&addr->p_abs, sizeof(int), 1, fp);
+    HEADER(WASMGlobalInstance)
+    {
+        fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         // uint8 type;
         fwrite(&node->type, sizeof(uint8), 1, fp);
@@ -1859,13 +1866,16 @@ void
 dump_WASMExportFuncInstance(Pool_Info *addr)
 {
     int i;
-    HEADER(WASMExportFuncInstance){
+    HEADER(WASMExportFuncInstance)
+    {
+        printf("[%p]\n", addr->list);
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
         //     char *name;
         DUMP_PTR(node->name);
         //     WASMFunctionInstance *function;
         DUMP_PTR(node->function);
+        printf("end\n");
     }
 }
 

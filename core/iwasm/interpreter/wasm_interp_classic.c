@@ -955,7 +955,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
     uint8 local_type, *global_addr;
     uint32 cache_index, type_index, cell_num;
     uint8 value_type;
-    uint32 migr_count = 0;
+    uint64 migr_count = 0;
 
     signal(SIGINT, &wasm_interp_signal);
 
@@ -968,8 +968,8 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
 #if WASM_ENABLE_LABELS_AS_VALUES == 0
     while (frame_ip < frame_ip_end) {
         opcode = *frame_ip++;
-
-        if (sig_flag) {
+        migr_count++;
+        if (migr_count==200000 || sig_flag) {
             printf("checkpoint\n");
             
             dump_runtime();
