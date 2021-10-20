@@ -12,6 +12,7 @@
 #include "wasm_native.h"
 #include "wasm_shared_memory.h"
 #include "wasm_dump.h"
+#include 
 #include "../interpreter/wasm_opcode.h"
 #include "../interpreter/wasm_runtime.h"
 #include "../interpreter/wasm_loader.h"
@@ -284,7 +285,7 @@ alloc_infos(void *addr, Data_Type type, size_t size)
         CASE_INFOS(uint64)
 
         CASE_INFOS(gc_heap_t)
-        
+
 #if WASM_ENABLE_LIBC_WASI != 0
         CASE_INFOS(WASIContext)
         CASE_INFOS(WASIArguments)

@@ -7,9 +7,9 @@
 #include "../../shared/mem-alloc/ems/ems_gc_internal.h"
 #include "wasm_memory.h"
 #include "wasm_dump.h"
-#include "wasm_interp.h"
-#include "wasm_loader.h"
-#include "wasm_runtime.h"
+#include "../interpreter/wasm_interp.h"
+#include "../interpreter/wasm_loader.h"
+#include "../interpreter/wasm_runtime.h"
 
 static FILE *fp;
 static unsigned long base;
