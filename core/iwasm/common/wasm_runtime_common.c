@@ -1857,7 +1857,6 @@ wasm_runtime_enlarge_memory(WASMModuleInstanceCommon *module,
     return false;
 }
 
-#define WASM_ENABLE_LIBC_WASI 1
 #if WASM_ENABLE_LIBC_WASI != 0
 
 void
