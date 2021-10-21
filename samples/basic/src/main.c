@@ -95,7 +95,7 @@ int main(int argc, char *argv_main[])
     init_args.native_module_name = "env";
     init_args.native_symbols = native_symbols;
 
-    return;
+    return 0;
     if (!wasm_runtime_full_init(&init_args)) {
         printf("Init runtime environment failed.\n");
         return -1;
