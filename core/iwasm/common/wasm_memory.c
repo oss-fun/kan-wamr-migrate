@@ -143,11 +143,11 @@ init_dump_func(void)
     dump_data[WASMAtomicEXTOpcodeT] = dump_WASMAtomicEXTOpcode;
 
     dump_data[HashMapElemT] = dump_HashMapElem;
-    dump_data[HashMapT]=dump_HashMap;
-    dump_data[timer_ctx_tT]=dump_timer_ctx_t;
-    dump_data[app_timer_tT]=dump_app_timer_t;
-    dump_data[bh_queueT]=dump_bh_queue;
-    dump_data[bh_queue_nodeT]=dump_bh_queue_node;
+    dump_data[HashMapT] = dump_HashMap;
+    dump_data[timer_ctx_tT] = dump_timer_ctx_t;
+    dump_data[app_timer_tT] = dump_app_timer_t;
+    dump_data[bh_queueT] = dump_bh_queue;
+    dump_data[bh_queue_nodeT] = dump_bh_queue_node;
 }
 
 #define CASE_INFOS(data_type)                                                 \
@@ -199,6 +199,9 @@ print_WASMExport(void)
 void
 dump_runtime(void)
 {
+    #if WASM_ENABLE_AOT != 0
+    return;
+#endif
     Pool_Info *info = root_info;
     int i;
 
@@ -387,6 +390,9 @@ alloc_infos(void *addr, Data_Type type, size_t size)
 void
 free_info(void *addr)
 {
+#if WASM_ENABLE_AOT != 0
+    return;
+#endif
     Pool_Info *info, *prev, *p;
 
     info = root_info;
