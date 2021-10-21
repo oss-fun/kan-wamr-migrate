@@ -19,7 +19,7 @@
 #include "../interpreter/wasm_interp.h"
 #include "../interpreter/wasm.h"
 #include "wasm_c_api.h"
-#ifdef WASM_ENABLE_LIBC_WASI != 0
+#if WASM_ENABLE_LIBC_WASI != 0
 #include "../libraries/libc-wasi/libc_wasi_wrapper.h"
 #endif
 
