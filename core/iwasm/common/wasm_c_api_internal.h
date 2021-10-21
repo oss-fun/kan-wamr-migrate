@@ -19,6 +19,13 @@
 /* caller needs to take care resource for the vector itself */
 #define DEFAULT_VECTOR_INIT_LENGTH (64)
 
+typedef struct wasm_module_ex_t wasm_module_ex_t;
+
+struct wasm_module_ex_t {
+    struct WASMModuleCommon *module_comm_rt;
+    wasm_byte_vec_t *binary;
+};
+
 WASM_DECLARE_VEC(instance, *)
 WASM_DECLARE_VEC(module, *)
 WASM_DECLARE_VEC(store, *)

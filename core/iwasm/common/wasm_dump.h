@@ -1,7 +1,6 @@
 #ifndef WASM_DUMP_H
 #define WASM_DUMP_H
 
-
 void
 init_dump(void *addr);
 
@@ -87,6 +86,15 @@ void
 dump_wasm_table_t(Pool_Info *addr);
 void
 dump_wasm_memory_t(Pool_Info *addr);
+void
+dump_wasm_store_vec_t(Pool_Info *addr);
+void
+dump_wasm_module_vec_t(Pool_Info *addr);
+void
+dump_wasm_instance_vec_t(Pool_Info *addr);
+void
+dump_wasm_extern_vec_t(Pool_Info *addr);
+
 void
 dump_WASMRegisteredModule(Pool_Info *addr);
 void
@@ -190,7 +198,12 @@ dump_WASMGlobalInstance(Pool_Info *addr);
 void
 dump_WASMExportFuncInstance(Pool_Info *addr);
 void
+dump_WASMExportGlobInstance(Pool_Info *addr);
+void
+dump_WASMSubModInstNode(Pool_Info *addr);
+void
 dump_WASMRuntimeFrame(Pool_Info *addr);
+
 void
 dump_WASMOpcode(Pool_Info *addr);
 void
@@ -199,13 +212,26 @@ void
 dump_WASMSimdEXTOpcode(Pool_Info *addr);
 void
 dump_WASMAtomicEXTOpcode(Pool_Info *addr);
-void dump_HashMapElem(Pool_Info* addr);
-void dump_HashMap(Pool_Info *addr);
-void dump_timer_ctx_t(Pool_Info *addr);
-void dump_app_timer_t(Pool_Info *addr);
-void dump_bh_queue(Pool_Info *addr);
-void dump_bh_queue_node(Pool_Info *addr);
+
 void
-dump_ERRO(Pool_Info *addr);
+dump_HashMapElem(Pool_Info *addr);
+void
+dump_HashMap(Pool_Info *addr);
+void
+dump_timer_ctx_t(Pool_Info *addr);
+void
+dump_app_timer_t(Pool_Info *addr);
+void
+dump_bh_queue(Pool_Info *addr);
+void
+dump_bh_queue_node(Pool_Info *addr);
+void dump_AtomicWaitInfo(Pool_Info *addr);
+    void dump_AtomicWaitNode(Pool_Info *addr);
+
+    void dump_wasi_iovec_t(Pool_Info *addr);
+    void dump_wasi_ciovec_t(Pool_Info *addr);
+
+void
+dump_ERROR(Pool_Info *addr);
 
 #endif // WASM_DUMP_H

@@ -69,7 +69,6 @@ dump_charT(Pool_Info *addr)
 void
 dump_uint8(Pool_Info *addr)
 {
-    
     fputc(uint8T, fp);
     fwrite(&addr->size, sizeof(uint64), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -78,7 +77,6 @@ dump_uint8(Pool_Info *addr)
 void
 dump_uint16(Pool_Info *addr)
 {
-    
     fputc(uint16T, fp);
     fwrite(&addr->size, sizeof(uint64), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -88,7 +86,6 @@ dump_uint16(Pool_Info *addr)
 void
 dump_uint32(Pool_Info *addr)
 {
-    
     fputc(uint32T, fp);
     fwrite(&addr->size, sizeof(uint64), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -98,7 +95,6 @@ dump_uint32(Pool_Info *addr)
 void
 dump_uint64(Pool_Info *addr)
 {
-    
     fputc(uint64T, fp);
     fwrite(&addr->size, sizeof(uint64), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -155,7 +151,6 @@ dump_base_addr(Pool_Info *addr)
 void
 dump_WASIContext(Pool_Info *addr)
 {
-    
     printf("skip WASIContext\n");
     return;
 #if WASM_ENABLE_LIBC_WASI != 0
@@ -264,7 +259,6 @@ dump_uvwasi_preopen_t(Pool_Info *addr)
 void
 dump_wasm_val_t(Pool_Info *addr)
 {
-    
     HEADER(wasm_val_t)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -302,124 +296,89 @@ dump_wasm_val_t(Pool_Info *addr)
 
 void
 dump_wasm_instance_t(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_wasm_engine_t(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_wasm_store_t(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_Vector(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_wasm_valtype_t(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_wasm_functype_t(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_wasm_valtype_vec_t(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_wasm_globaltype_t(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_wasm_tabletype_t(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_wasm_memorytype_t(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_wasm_importtype_t(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_wasm_byte_vec_t(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_wasm_exporttype_t(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_wasm_ref_t(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_wasm_frame_t(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_wasm_trap_t(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_wasm_foreign_t(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_wasm_module_ex_t(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_wasm_func_t(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_wasm_global_t(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_wasm_table_t(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_wasm_memory_t(Pool_Info *addr)
-{
-    
-}
+{}
+
+void
+dump_wasm_store_vec_t(Pool_Info *addr)
+{}
+void
+dump_wasm_module_vec_t(Pool_Info *addr)
+{}
+void
+dump_wasm_instance_vec_t(Pool_Info *addr)
+{}
+void
+dump_wasm_extern_vec_t(Pool_Info *addr)
+{}
 void
 dump_WASMRegisteredModule(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_LoadingModule(Pool_Info *addr)
-{
-    
-}
+{}
 /* 
     *end wasm-c-api
 */
@@ -427,7 +386,7 @@ dump_LoadingModule(Pool_Info *addr)
 void
 dump_WASMExecEnv(Pool_Info *addr)
 {
-    int i,j;
+    int i, j;
     HEADER_BUF(WASMExecEnv);
 
     //struct WASMExecEnv *next;
@@ -512,8 +471,6 @@ dump_WASMExecEnv(Pool_Info *addr)
 void
 dump_NativeSymbolsNode(Pool_Info *addr)
 {
-    
-
     HEADER(NativeSymbolsNode)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -533,7 +490,6 @@ dump_NativeSymbolsNode(Pool_Info *addr)
 void
 dump_WASMModuleCommon(Pool_Info *addr)
 {
-    
     HEADER_BUF(WASMModuleCommon);
 
     //uint32 module_type;
@@ -544,7 +500,6 @@ dump_WASMModuleCommon(Pool_Info *addr)
 void
 dump_WASMModuleInstanceCommon(Pool_Info *addr)
 {
-    
     HEADER_BUF(WASMModuleInstanceCommon);
 
     //uint32 module_type;
@@ -556,7 +511,6 @@ dump_WASMModuleInstanceCommon(Pool_Info *addr)
 void
 dump_WASMModuleMemConsumption(Pool_Info *addr)
 {
-    
     HEADER(WASMModuleMemConsumption)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -595,7 +549,6 @@ dump_WASMModuleMemConsumption(Pool_Info *addr)
 void
 dump_WASMModuleInstMemConsumption(Pool_Info *addr)
 {
-    
     HEADER(WASMModuleInstMemConsumption)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -621,7 +574,6 @@ dump_WASMModuleInstMemConsumption(Pool_Info *addr)
 void
 dump_WASMMemoryInstanceCommon(Pool_Info *addr)
 {
-    
     HEADER_BUF(WASMMemoryInstanceCommon);
 
     //uint32 module_type;
@@ -632,7 +584,6 @@ dump_WASMMemoryInstanceCommon(Pool_Info *addr)
 void
 dump_WASMSection(Pool_Info *addr) //==wasm_section_t
 {
-    
     HEADER(WASMSection)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -650,7 +601,6 @@ dump_WASMSection(Pool_Info *addr) //==wasm_section_t
 void
 dump_WASMCApiFrame(Pool_Info *addr) //==wasm_frame_t
 {
-    
     HEADER(WASMCApiFrame)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -669,14 +619,12 @@ dump_WASMCApiFrame(Pool_Info *addr) //==wasm_frame_t
 void
 dump_WASMSharedMemNode(Pool_Info *addr)
 {
-    
     //skip
 }
 
 void
 dump_WASMModule(Pool_Info *addr) // 要チェック
 {
-    
     HEADER(WASMModule)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -803,7 +751,6 @@ dump_WASMModule(Pool_Info *addr) // 要チェック
 void
 dump_WASMFunction(Pool_Info *addr) //要チェック
 {
-    
     HEADER_BUF(WASMFunction);
 
 #if WASM_ENABLE_CUSTOM_NAME_SECTION != 0
@@ -861,7 +808,6 @@ dump_WASMFunctionT(Pool_Info *addr)
 void
 dump_WASMGlobal(Pool_Info *addr)
 {
-    
     HEADER(WASMGlobal)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -934,8 +880,6 @@ dump_WASMGlobal(Pool_Info *addr)
 void
 dump_WASMExport(Pool_Info *addr)
 {
-    
-
     HEADER(WASMExport)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -953,7 +897,6 @@ dump_WASMExport(Pool_Info *addr)
 void
 dump_V128(Pool_Info *addr)
 {
-    
     HEADER(V128)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -965,7 +908,6 @@ dump_V128(Pool_Info *addr)
 void
 dump_WASMValue(Pool_Info *addr)
 {
-    
     HEADER(WASMValue)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -975,7 +917,6 @@ dump_WASMValue(Pool_Info *addr)
 void
 dump_InitializerExpression(Pool_Info *addr)
 {
-    
     HEADER(InitializerExpression)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -1036,7 +977,6 @@ dump_InitializerExpression(Pool_Info *addr)
 void
 dump_WASMType(Pool_Info *addr)
 {
-    
     HEADER_BUF(WASMType);
 
     // uint16 param_count;
@@ -1070,7 +1010,6 @@ dump_WASMTypeT(Pool_Info *addr)
 void
 dump_WASMTable(Pool_Info *addr)
 {
-    
     HEADER(WASMTable)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -1090,7 +1029,6 @@ dump_WASMTable(Pool_Info *addr)
 void
 dump_WASMMemory(Pool_Info *addr)
 {
-    
     HEADER(WASMMemory)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -1114,32 +1052,27 @@ for (i = 0; i < addr->size; i++, node = (*)addr->p_raw + i) {
 void
 dump_WASMTableImport(Pool_Info *addr)
 {
-    
     // maybe skip
 }
 void
 dump_WASMMemoryImport(Pool_Info *addr)
 {
-    
     // maybe skip
 }
 void
 dump_WASMFunctionImport(Pool_Info *addr)
 {
-    
     // maybe skip
 }
 void
 dump_WASMGlobalImport(Pool_Info *addr)
 {
-    
     // maybe skip
 }
 
 void
 dump_WASMImport(Pool_Info *addr)
 {
-    
     HEADER(WASMImport)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -1228,7 +1161,6 @@ dump_WASMImport(Pool_Info *addr)
 void
 dump_WASMTableSeg(Pool_Info *addr)
 {
-    
     HEADER(WASMTableSeg)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -1311,7 +1243,6 @@ dump_WASMTableSeg(Pool_Info *addr)
 void
 dump_WASMDataSeg(Pool_Info *addr)
 {
-    
     HEADER(WASMDataSeg)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -1404,13 +1335,11 @@ dump_WASMDataSegT(Pool_Info *addr)
 void
 dump_BlockAddr(Pool_Info *addr)
 {
-    
     // skip
 }
 void
 dump_WASIArguments(Pool_Info *addr)
 {
-    
     // maybe skip
     printf("WASIArguments\n");
     const char **dir_list;
@@ -1427,7 +1356,6 @@ dump_WASIArguments(Pool_Info *addr)
 void
 dump_StringNode(Pool_Info *addr)
 {
-    
     HEADER_BUF(StringNode);
 
     //size
@@ -1440,13 +1368,11 @@ dump_StringNode(Pool_Info *addr)
 void
 dump_BlockType(Pool_Info *addr)
 {
-    
     // skip
 }
 void
 dump_WASMBranchBlock(Pool_Info *addr) //要チェック アロケートはされない
 {
-    
     printf("WASMBranchBlock\n");
     HEADER(WASMBranchBlock)
     {
@@ -1464,13 +1390,10 @@ dump_WASMBranchBlock(Pool_Info *addr) //要チェック アロケートはされ
 }
 void
 dump_BranchBlockPatch(Pool_Info *addr)
-{
-    
-}
+{}
 void
 dump_WASMInterpFrame(Pool_Info *addr)
 {
-    
     HEADER_BUF(WASMInterpFrame);
 
     //struct WASMInterpFrame *prev_frame;
@@ -1548,8 +1471,6 @@ dump_WASMInterpFrame(Pool_Info *addr)
 void
 dump_BranchBlock(Pool_Info *addr)
 {
-    
-
     printf("BranchBlock\n");
     exit(1);
     //HEADER(BranchBlock);
@@ -1579,7 +1500,6 @@ dump_BranchBlock(Pool_Info *addr)
 void
 dump_WASMLoaderContext(Pool_Info *addr)
 {
-    
     printf("WASMLoaderContext\n");
     exit(1);
     // skip
@@ -1587,7 +1507,6 @@ dump_WASMLoaderContext(Pool_Info *addr)
 void
 dump_Const(Pool_Info *addr)
 {
-    
     HEADER(Const)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -1604,7 +1523,6 @@ dump_Const(Pool_Info *addr)
 void
 dump_WASMModuleInstance(Pool_Info *addr)
 {
-    
     HEADER(WASMModuleInstance)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -1685,7 +1603,6 @@ dump_WASMModuleInstance(Pool_Info *addr)
 void
 dump_WASMFunctionInstance(Pool_Info *addr)
 {
-    
     HEADER(WASMFunctionInstance)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -1722,7 +1639,6 @@ dump_WASMFunctionInstance(Pool_Info *addr)
 void
 dump_WASMMemoryInstance(Pool_Info *addr)
 {
-    
     HEADER(WASMMemoryInstance)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -1772,7 +1688,6 @@ dump_WASMMemoryInstanceT(Pool_Info *addr)
 void
 dump_WASMTableInstance(Pool_Info *addr)
 {
-    
     HEADER_BUF(WASMTableInstance);
 
     // uint8 elem_type;
@@ -1803,7 +1718,6 @@ dump_WASMTableInstanceT(Pool_Info *addr)
 void
 dump_WASMGlobalInstance(Pool_Info *addr)
 {
-    
     HEADER(WASMGlobalInstance)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -1868,7 +1782,6 @@ dump_WASMGlobalInstance(Pool_Info *addr)
 void
 dump_WASMExportFuncInstance(Pool_Info *addr)
 {
-    
     HEADER(WASMExportFuncInstance)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -1879,43 +1792,89 @@ dump_WASMExportFuncInstance(Pool_Info *addr)
         DUMP_PTR(node->function);
     }
 }
+void
+dump_WASMExportGlobInstance(Pool_Info *addr)
+{
+    printf("WASMExportGlobInstance\n");
+}
+void
+dump_WASMSubModInstNode(Pool_Info *addr)
+{
+    printf("WASMSubModInstNode\n");
+}
 
 void
 dump_WASMRuntimeFrame(Pool_Info *addr)
 {
-    
     printf("WASMRuntimeFrame\n");
 }
 
 void
 dump_WASMOpcode(Pool_Info *addr)
 {
-    
     printf("WASMOpcode\n");
     // enum
 }
 void
 dump_WASMMiscEXTOpcode(Pool_Info *addr)
 {
-    
     // enum
 }
 void
 dump_WASMSimdEXTOpcode(Pool_Info *addr)
 {
-    
     // enum
 }
 void
 dump_WASMAtomicEXTOpcode(Pool_Info *addr)
 {
-    
     // enum
 }
 
-void dump_HashMapElem(Pool_Info *addr){}
-void dump_HashMap(Pool_Info *addr){}
-void dump_timer_ctx_t(Pool_Info *addr){}
-void dump_app_timer_t(Pool_Info *addr){}
-void dump_bh_queue(Pool_Info *addr){}
-void dump_bh_queue_node(Pool_Info *addr){}
+void
+dump_HashMapElem(Pool_Info *addr)
+{
+    printf("HashMapElem\n");
+}
+void
+dump_HashMap(Pool_Info *addr)
+{
+    printf("HashMap\n");
+}
+void
+dump_timer_ctx_t(Pool_Info *addr)
+{
+    printf("timer_ctx_t\n");
+}
+void
+dump_app_timer_t(Pool_Info *addr)
+{
+    printf("app_timer_t\n");
+}
+void
+dump_bh_queue(Pool_Info *addr)
+{
+    printf("bh_queue\n");
+}
+void
+dump_bh_queue_node(Pool_Info *addr)
+{
+    printf("bh_queue_node\n");
+}
+void
+dump_AtomicWaitInfo(Pool_Info *addr)
+{}
+void
+dump_AtomicWaitNode(Pool_Info *addr)
+{}
+
+void
+dump_wasi_iovec_t(Pool_Info *addr)
+{
+    printf("wasi_iovec_t\n");
+}
+void
+dump_wasi_ciovec_t(Pool_Info *addr)
+{
+    printf("wasi_ciovec_t\n");
+}

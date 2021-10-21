@@ -16,8 +16,6 @@
 #define ASSERT_NOT_IMPLEMENTED() bh_assert(!"not implemented")
 #define UNREACHABLE()            bh_assert(!"unreachable")
 
-typedef struct wasm_module_ex_t wasm_module_ex_t;
-
 static void
 wasm_module_delete_internal(wasm_module_t *);
 
@@ -81,7 +79,6 @@ failed:                                                                       \
         if (!(vector_p = malloc_internal(sizeof(*(vector_p))))) {             \
             goto failed;                                                      \
         }                                                                     \
-        alloc_info(vector_p, DUMMYT);                                         \
                                                                               \
         init_func(vector_p, ##__VA_ARGS__);                                   \
         if (vector_p->size && !vector_p->data) {                              \
@@ -350,6 +347,7 @@ wasm_engine_new_internal(mem_alloc_type_t type, const MemAllocOption *opts)
 
     /* create wasm_store_vec_t */
     INIT_VEC(engine->stores, wasm_store_vec_new_uninitialized, 1);
+    alloc_info(engine->stores, wasm_store_vec_tT);
 
     RETURN_OBJ(engine, wasm_engine_delete_internal)
 }
@@ -416,8 +414,10 @@ wasm_store_new(wasm_engine_t *engine)
     /* new a vector, and new its data */
     INIT_VEC(store->modules, wasm_module_vec_new_uninitialized,
              DEFAULT_VECTOR_INIT_LENGTH);
+    alloc_info(store->modules, wasm_module_vec_tT);
     INIT_VEC(store->instances, wasm_instance_vec_new_uninitialized,
              DEFAULT_VECTOR_INIT_LENGTH);
+    alloc_info(store->instances, wasm_instance_vec_tT);
 
     if (!(store->foreigns = malloc_internal(sizeof(Vector)))
         || !(bh_vector_init(store->foreigns, 24, sizeof(Vector *)))) {
@@ -566,6 +566,7 @@ wasm_functype_new_internal(WASMType *type_rt)
     /* WASMType->types[0 : type_rt->param_count) -> type->params */
     INIT_VEC(type->params, wasm_valtype_vec_new_uninitialized,
              type_rt->param_count);
+    alloc_info(type->params, wasm_valtype_vec_tT);
     for (i = 0; i < type_rt->param_count; ++i) {
         if (!(param_type = wasm_valtype_new_internal(*(type_rt->types + i)))) {
             goto failed;
@@ -580,6 +581,7 @@ wasm_functype_new_internal(WASMType *type_rt)
     /* WASMType->types[type_rt->param_count : type_rt->result_count) -> type->results */
     INIT_VEC(type->results, wasm_valtype_vec_new_uninitialized,
              type_rt->result_count);
+    alloc_info(type->results, wasm_valtype_vec_tT);
     for (i = 0; i < type_rt->result_count; ++i) {
         if (!(result_type = wasm_valtype_new_internal(
                 *(type_rt->types + type_rt->param_count + i)))) {
@@ -1737,7 +1739,7 @@ wasm_trap_new(wasm_store_t *store, const wasm_message_t *message)
     alloc_info(trap, wasm_trap_tT);
 
     INIT_VEC(trap->message, wasm_byte_vec_new, message->size, message->data);
-
+    alloc_info(trap->message, wasm_byte_vec_tT);
     return trap;
 failed:
     wasm_trap_delete(trap);
@@ -1894,11 +1896,6 @@ wasm_foreign_delete(wasm_foreign_t *foreign)
     }
 }
 
-struct wasm_module_ex_t {
-    struct WASMModuleCommon *module_comm_rt;
-    wasm_byte_vec_t *binary;
-};
-
 static inline wasm_module_t *
 module_ext_to_module(wasm_module_ex_t *module_ex)
 {
@@ -1961,7 +1958,7 @@ wasm_module_new(wasm_store_t *store, const wasm_byte_vec_t *binary)
     }
     alloc_info(module_ex, wasm_module_ex_tT);
     INIT_VEC(module_ex->binary, wasm_byte_vec_new, binary->size, binary->data);
-
+    alloc_info(module_ex->binary, wasm_byte_vec_tT);
 #if WASM_ENABLE_AOT != 0 && WASM_ENABLE_JIT != 0
     if (Wasm_Module_Bytecode == pkg_type) {
         if (!(aot_file_buf = aot_compile_wasm_file(
@@ -4419,7 +4416,7 @@ wasm_instance_new_with_args(wasm_store_t *store,
 
             INIT_VEC(instance->imports, wasm_extern_vec_new_uninitialized,
                      import_count);
-
+            alloc_info(instance->imports, wasm_extern_vec_tT);
             if (import_count) {
                 uint32 actual_link_import_count =
                   interp_link(instance, MODULE_INTERP(module),
@@ -4442,7 +4439,7 @@ wasm_instance_new_with_args(wasm_store_t *store,
 
             INIT_VEC(instance->imports, wasm_extern_vec_new_uninitialized,
                      import_count);
-
+            alloc_info(instance->imports, wasm_extern_vec_tT);
             if (import_count) {
                 import_count = aot_link(instance, MODULE_AOT(module),
                                         (wasm_extern_t **)imports->data);
@@ -4506,7 +4503,7 @@ wasm_instance_new_with_args(wasm_store_t *store,
 
         INIT_VEC(instance->exports, wasm_extern_vec_new_uninitialized,
                  export_cnt);
-
+        alloc_info(instance->exports, wasm_extern_vec_tT);
         if (!interp_process_export(
               store, (WASMModuleInstance *)instance->inst_comm_rt,
               instance->exports)) {
@@ -4527,7 +4524,7 @@ wasm_instance_new_with_args(wasm_store_t *store,
 
         INIT_VEC(instance->exports, wasm_extern_vec_new_uninitialized,
                  export_cnt);
-
+        alloc_info(instance->exports, wasm_extern_vec_tT);
         if (!aot_process_export(store,
                                 (AOTModuleInstance *)instance->inst_comm_rt,
                                 instance->exports)) {

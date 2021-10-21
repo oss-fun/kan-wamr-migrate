@@ -61,6 +61,10 @@ typedef enum Data_Type {
     wasm_global_tT,
     wasm_table_tT,
     wasm_memory_tT,
+    wasm_store_vec_tT,
+    wasm_module_vec_tT,
+    wasm_instance_vec_tT,
+    wasm_extern_vec_tT,
 
     //wasm_exec_env.h
     WASMExecEnvT,
@@ -128,7 +132,10 @@ typedef enum Data_Type {
     WASMTableInstanceTT,
     WASMGlobalInstanceT,
     WASMExportFuncInstanceT,
+    WASMExportGlobInstanceT,
+    WASMSubModInstNodeT,
     WASMRuntimeFrameT, // == WASMInterpFrame
+    
 
     //wasm_opcode.h
     WASMOpcodeT,
@@ -141,7 +148,13 @@ typedef enum Data_Type {
     app_timer_tT,
     bh_queueT,
     bh_queue_nodeT,
-    DUMMYT,
+
+    AtomicWaitInfoT,
+    AtomicWaitNodeT,
+
+    wasi_iovec_tT,
+    wasi_ciovec_tT,
+    WASI_FILE_T,
     ERRORT
 } Data_Type;
 

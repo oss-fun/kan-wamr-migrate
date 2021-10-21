@@ -8,6 +8,7 @@
 #include "mem_alloc.h"
 #include "ems/ems_gc_internal.h"
 #include "wasm_memory.h"
+#include "wasm_c_api_internal.h"
 #include "wasm_exec_env.h"
 #include "wasm_native.h"
 #include "wasm_shared_memory.h"
@@ -18,6 +19,7 @@
 #include "../interpreter/wasm_interp.h"
 #include "../interpreter/wasm.h"
 #include "wasm_c_api.h"
+#include "../libraries/libc-wasi/libc_wasi_wrapper.h"
 
 typedef enum Memory_Mode {
     MEMORY_MODE_UNKNOWN = 0,
@@ -60,8 +62,10 @@ init_dump_func(void)
     dump_data[argv_environ_valuesT] = dump_argv_environ_values;
     dump_data[uvwasi_tT] = dump_uvwasi_t;
     dump_data[uvwasi_preopen_tT] = dump_uvwasi_preopen_t;
-    dump_data[wasm_val_tT] = dump_wasm_val_t;
+    dump_data[wasi_iovec_tT]=dump_wasi_iovec_t;
+    dump_data[wasi_ciovec_tT]=dump_wasi_ciovec_t;
 
+    dump_data[wasm_val_tT] = dump_wasm_val_t;
     dump_data[wasm_instance_tT] = dump_wasm_instance_t;
     dump_data[wasm_engine_tT] = dump_wasm_engine_t;
     dump_data[wasm_store_tT] = dump_wasm_store_t;
@@ -84,6 +88,11 @@ init_dump_func(void)
     dump_data[wasm_global_tT] = dump_wasm_global_t;
     dump_data[wasm_table_tT] = dump_wasm_table_t;
     dump_data[wasm_memory_tT] = dump_wasm_memory_t;
+    dump_data[wasm_store_vec_tT] = dump_wasm_store_vec_t;
+    dump_data[wasm_module_vec_tT] = dump_wasm_module_vec_t;
+    dump_data[wasm_instance_vec_tT] = dump_wasm_instance_vec_t;
+    dump_data[wasm_extern_vec_tT] = dump_wasm_extern_vec_t;
+
     dump_data[WASMRegisteredModuleT] = dump_WASMRegisteredModule;
     dump_data[LoadingModuleT] = dump_LoadingModule;
 
@@ -136,6 +145,9 @@ init_dump_func(void)
     dump_data[WASMTableInstanceTT] = dump_WASMTableInstanceT;
     dump_data[WASMGlobalInstanceT] = dump_WASMGlobalInstance;
     dump_data[WASMExportFuncInstanceT] = dump_WASMExportFuncInstance;
+
+    dump_data[WASMExportGlobInstanceT] = dump_WASMExportGlobInstance;
+    dump_data[WASMSubModInstNodeT] = dump_WASMSubModInstNode;
     dump_data[WASMRuntimeFrameT] = dump_WASMRuntimeFrame;
     dump_data[WASMOpcodeT] = dump_WASMOpcode;
     dump_data[WASMMiscEXTOpcodeT] = dump_WASMMiscEXTOpcode;
@@ -148,6 +160,9 @@ init_dump_func(void)
     dump_data[app_timer_tT] = dump_app_timer_t;
     dump_data[bh_queueT] = dump_bh_queue;
     dump_data[bh_queue_nodeT] = dump_bh_queue_node;
+
+    dump_data[AtomicWaitInfoT] = dump_AtomicWaitInfo;
+    dump_data[AtomicWaitNodeT] = dump_AtomicWaitNode;
 }
 
 #define CASE_INFOS(data_type)                                                 \
@@ -199,7 +214,7 @@ print_WASMExport(void)
 void
 dump_runtime(void)
 {
-    #if WASM_ENABLE_AOT != 0 || WASM_ENABLE_MULTI_MODULE != 0
+#if WASM_ENABLE_AOT != 0 || WASM_ENABLE_MULTI_MODULE != 0
     return;
 #endif
     Pool_Info *info = root_info;
@@ -208,13 +223,13 @@ dump_runtime(void)
     init_dump_func();
     init_dump(pool_allocator);
 
-    printf("A\n");
     while (info) {
-        if (info->type != DUMMYT) {
-            printf("B:%d\n", info->type);
+        if(info->type!=WASI_FILE_T){
             (*dump_data[info->type])(info);
-            printf("C\n");
+        }else{
+            printf("WASI_FILE_T\n");
         }
+        
         info = info->next;
     }
 }
@@ -301,6 +316,8 @@ alloc_infos(void *addr, Data_Type type, size_t size)
 #if WASM_ENABLE_LIBC_WASI != 0
         CASE_INFOS(WASIContext)
         CASE_INFOS(WASIArguments)
+        CASE_INFOS(wasi_iovec_t)
+        CASE_INFOS(wasi_ciovec_t)
 #endif
         //CASE_INFOS(WASMThreadArg)
         //CASE_INFOS(ExternRefMapNode)
@@ -324,10 +341,33 @@ alloc_infos(void *addr, Data_Type type, size_t size)
         CASE_INFOS(WASMMemoryInstanceCommon)
         CASE_INFOS(WASMSection)
         CASE_INFOS(WASMCApiFrame)
-#if WASM_ENABLE_MULTI_MODULE != 0
-        CASE_INFOS(WASMRegisteredModule)
-        CASE_INFOS(LoadingModule)
-#endif
+
+        CASE_INFOS(wasm_instance_t)
+        CASE_INFOS(wasm_engine_t)
+        CASE_INFOS(wasm_store_t)
+        CASE_INFOS(Vector)
+        CASE_INFOS(wasm_valtype_t)
+        CASE_INFOS(wasm_functype_t)
+        CASE_INFOS(wasm_valtype_vec_t)
+        CASE_INFOS(wasm_globaltype_t)
+        CASE_INFOS(wasm_tabletype_t)
+        CASE_INFOS(wasm_memorytype_t)
+        CASE_INFOS(wasm_importtype_t)
+        CASE_INFOS(wasm_byte_vec_t)
+        CASE_INFOS(wasm_exporttype_t)
+        CASE_INFOS(wasm_ref_t)
+        CASE_INFOS(wasm_frame_t)
+        CASE_INFOS(wasm_trap_t)
+        CASE_INFOS(wasm_foreign_t)
+        CASE_INFOS(wasm_module_ex_t)
+        CASE_INFOS(wasm_func_t)
+        CASE_INFOS(wasm_global_t)
+        CASE_INFOS(wasm_table_t)
+        CASE_INFOS(wasm_memory_t)
+        CASE_INFOS(wasm_store_vec_t)
+        CASE_INFOS(wasm_module_vec_t)
+        CASE_INFOS(wasm_instance_vec_t)
+        CASE_INFOS(wasm_extern_vec_t)
 
         CASE_INFOS(WASMSharedMemNode)
 
@@ -359,9 +399,6 @@ alloc_infos(void *addr, Data_Type type, size_t size)
         CASE_INFOS(BranchBlock)
         CASE_INFOS(WASMLoaderContext)
         CASE_INFOS(Const)
-#if WASM_ENABLE_FAST_INTERP != 0
-        CASE_INFOS(BranchBlockPatch)
-#endif
 
         CASE_INFOS(WASMModuleInstance)
 
@@ -370,8 +407,8 @@ alloc_infos(void *addr, Data_Type type, size_t size)
         CASE_INFOS(WASMTableInstance)
         CASE_INFOS(WASMGlobalInstance)
         CASE_INFOS(WASMExportFuncInstance)
-        CASE_INFOS(WASMRuntimeFrame)
 
+        CASE_INFOS(WASMRuntimeFrame)
         CASE_INFOS(WASMOpcode)
         CASE_INFOS(WASMMiscEXTOpcode)
         CASE_INFOS(WASMSimdEXTOpcode)
@@ -382,6 +419,18 @@ alloc_infos(void *addr, Data_Type type, size_t size)
         CASE_INFOS(app_timer_t)
         CASE_INFOS(bh_queue)
         CASE_INFOS(bh_queue_node)
+        CASE_INFOS(AtomicWaitInfo)
+        CASE_INFOS(AtomicWaitNode)
+#if WASM_ENABLE_FAST_INTERP != 0
+        CASE_INFOS(BranchBlockPatch)
+#endif
+
+#if WASM_ENABLE_MULTI_MODULE != 0
+        CASE_INFOS(WASMRegisteredModule)
+        CASE_INFOS(LoadingModule)
+        CASE_INFOS(WASMExportGlobInstance)
+        CASE_INFOS(WASMSubModInstNode)
+#endif
         default:
             break;
     }
@@ -402,7 +451,6 @@ free_info(void *addr)
             while (info->list) {
                 p = info->list->list;
                 free(info->list);
-
                 info->list = p;
             }
 

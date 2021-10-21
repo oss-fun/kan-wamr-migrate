@@ -8,6 +8,7 @@
 #include "wasm_export.h"
 #include "../../common/wasm_memory.h"
 
+
 void
 wasm_runtime_set_exception(wasm_module_inst_t module, const char *exception);
 
@@ -31,16 +32,6 @@ wasm_runtime_set_exception(wasm_module_inst_t module, const char *exception);
     wasm_runtime_module_malloc(module_inst, size, p_native_addr)
 
 #define module_free(offset) wasm_runtime_module_free(module_inst, offset)
-
-typedef struct wasi_prestat_app {
-    wasi_preopentype_t pr_type;
-    uint32 pr_name_len;
-} wasi_prestat_app_t;
-
-typedef struct iovec_app {
-    uint32 buf_offset;
-    uint32 buf_len;
-} iovec_app_t;
 
 typedef struct WASIContext {
     struct fd_table *curfds;
@@ -361,7 +352,7 @@ wasi_fd_pread(wasm_exec_env_t exec_env,
     if (total_size >= UINT32_MAX
         || !(iovec_begin = wasm_runtime_malloc((uint32)total_size)))
         return (wasi_errno_t)-1;
-    alloc_info(iovec, DUMMYT);
+    alloc_infos(iovec_begin, wasi_iovec_tT,iovs_len);
     iovec = iovec_begin;
 
     for (i = 0; i < iovs_len; i++, iovec_app++, iovec++) {
@@ -418,7 +409,7 @@ wasi_fd_pwrite(wasm_exec_env_t exec_env,
     if (total_size >= UINT32_MAX
         || !(ciovec_begin = wasm_runtime_malloc((uint32)total_size)))
         return (wasi_errno_t)-1;
-    alloc_info(ciovec_begin, DUMMYT);
+    alloc_infos(ciovec_begin, wasi_ciovec_tT,iovs_len);
     ciovec = ciovec_begin;
 
     for (i = 0; i < iovs_len; i++, iovec_app++, ciovec++) {
@@ -474,7 +465,7 @@ wasi_fd_read(wasm_exec_env_t exec_env,
     if (total_size >= UINT32_MAX
         || !(iovec_begin = wasm_runtime_malloc((uint32)total_size)))
         return (wasi_errno_t)-1;
-    alloc_info(iovec_begin, DUMMYT);
+    alloc_infos(iovec_begin, wasi_iovec_tT,iovs_len);
     iovec = iovec_begin;
 
     for (i = 0; i < iovs_len; i++, iovec_app++, iovec++) {
@@ -652,7 +643,7 @@ wasi_fd_write(wasm_exec_env_t exec_env,
     if (total_size >= UINT32_MAX
         || !(ciovec_begin = wasm_runtime_malloc((uint32)total_size)))
         return (wasi_errno_t)-1;
-    alloc_info(ciovec_begin, DUMMYT);
+    alloc_infos(ciovec_begin, wasi_ciovec_tT,iovs_len);
     ciovec = ciovec_begin;
 
     for (i = 0; i < iovs_len; i++, iovec_app++, ciovec++) {
@@ -1096,7 +1087,7 @@ wasi_sock_recv(wasm_exec_env_t exec_env,
     if (total_size >= UINT32_MAX
         || !(iovec_begin = wasm_runtime_malloc((uint32)total_size)))
         return (wasi_errno_t)-1;
-    alloc_info(iovec_begin, DUMMYT);
+    alloc_infos(iovec_begin, wasi_iovec_tT,ri_data_len);
     iovec = iovec_begin;
 
     for (i = 0; i < ri_data_len; i++, ri_data++, iovec++) {
@@ -1153,7 +1144,7 @@ wasi_sock_send(wasm_exec_env_t exec_env,
     if (total_size >= UINT32_MAX
         || !(ciovec_begin = wasm_runtime_malloc((uint32)total_size)))
         return (wasi_errno_t)-1;
-    alloc_info(ciovec_begin, DUMMYT);
+    alloc_infos(ciovec_begin, wasi_ciovec_tT,si_data_len);
     ciovec = ciovec_begin;
 
     for (i = 0; i < si_data_len; i++, si_data++, ciovec++) {

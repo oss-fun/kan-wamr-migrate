@@ -256,7 +256,7 @@ fd_prestats_grow(struct fd_prestats *pt, size_t min, size_t incr)
         struct fd_prestat *prestats =
           wasm_runtime_malloc((uint32)(sizeof(*prestats) * size));
         if (prestats)
-            alloc_info(prestats, DUMMYT);
+            alloc_info(prestats, WASI_FILE_T);
         if (prestats == NULL)
             return false;
 
@@ -388,7 +388,7 @@ fd_table_grow(struct fd_table *ft, size_t min, size_t incr)
         struct fd_entry *entries =
           wasm_runtime_malloc((uint32)(sizeof(*entries) * size));
         if (entries)
-            alloc_info(entries, DUMMYT);
+            alloc_info(entries, WASI_FILE_T);
         if (entries == NULL)
             return false;
 
@@ -416,7 +416,7 @@ fd_object_new(__wasi_filetype_t type, struct fd_object **fo)
 {
     *fo = wasm_runtime_malloc(sizeof(**fo));
     if (*fo)
-        alloc_info(*fo, DUMMYT);
+        alloc_info(*fo, WASI_FILE_T);
     if (*fo == NULL)
         return __WASI_ENOMEM;
     refcount_init(&(*fo)->refcount, 1);
@@ -2616,13 +2616,13 @@ wasmtime_ssp_poll_oneoff(
     struct fd_object **fos =
       wasm_runtime_malloc((uint32)(nsubscriptions * sizeof(*fos)));
     if (fos)
-        alloc_info(fos, DUMMYT);
+        alloc_info(fos, WASI_FILE_T);
     if (fos == NULL)
         return __WASI_ENOMEM;
     struct pollfd *pfds =
       wasm_runtime_malloc((uint32)(nsubscriptions * sizeof(*pfds)));
     if (pfds)
-        alloc_info(pfds, DUMMYT);
+        alloc_info(pfds, WASI_FILE_T);
     if (pfds == NULL) {
         wasm_runtime_free(fos);
         return __WASI_ENOMEM;

@@ -1,0 +1,9 @@
+typedef struct __wasi_iovec_t {
+    void *buf;
+    size_t buf_len;
+} __wasi_iovec_t;
+
+typedef struct __wasi_ciovec_t {
+    const void *buf;
+    size_t buf_len;
+} __wasi_ciovec_t;

@@ -13,18 +13,7 @@ static korp_mutex shared_memory_list_lock;
 
 enum { S_WAITING, S_NOTIFIED };
 
-typedef struct AtomicWaitInfo {
-    korp_mutex wait_list_lock;
-    bh_list wait_list_head;
-    bh_list *wait_list;
-} AtomicWaitInfo;
 
-typedef struct AtomicWaitNode {
-    bh_list_link l;
-    uint8 status;
-    korp_mutex wait_lock;
-    korp_cond wait_cond;
-} AtomicWaitNode;
 
 /* Atomic wait map */
 static HashMap *wait_map;
@@ -232,7 +221,7 @@ acquire_wait_info(void *address, bool create)
                 (AtomicWaitInfo *)wasm_runtime_malloc(sizeof(AtomicWaitInfo))))
             return NULL;
 
-        alloc_info(wait_info, DUMMYT);
+        alloc_info(wait_info, AtomicWaitInfoT);
         memset(wait_info, 0, sizeof(AtomicWaitInfo));
 
         /* init wait list */
@@ -345,7 +334,7 @@ wasm_runtime_atomic_wait(WASMModuleInstanceCommon *module,
             os_mutex_unlock(&wait_info->wait_list_lock);
             return -1;
         }
-        alloc_info(wait_node, DUMMYT);
+        alloc_info(wait_node, AtomicWaitNodeT);
         memset(wait_node, 0, sizeof(AtomicWaitNode));
 
         if (0 != os_mutex_init(&wait_node->wait_lock)) {

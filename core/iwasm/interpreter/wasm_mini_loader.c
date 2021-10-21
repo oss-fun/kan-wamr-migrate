@@ -169,7 +169,7 @@ loader_malloc(uint64 size, char *error_buf, uint32 error_buf_size)
         set_error_buf(error_buf, error_buf_size, "allocate memory failed");
         return NULL;
     }
-    alloc_info(mem, DUMMYT);
+    alloc_info_buf(mem,uint8T, size);
 
     memset(mem, 0, (uint32)size);
     return mem;
