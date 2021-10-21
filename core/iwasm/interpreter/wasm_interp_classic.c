@@ -969,11 +969,11 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
     while (frame_ip < frame_ip_end) {
         opcode = *frame_ip++;
         migr_count++;
-        if (migr_count==200000 || sig_flag) {
+        if (sig_flag) {
             printf("checkpoint\n");
             
             dump_runtime();
-            exit(1);
+            exit(0);
         }
         switch (opcode) {
 #else
