@@ -199,6 +199,12 @@ void
 dump_WASMSimdEXTOpcode(Pool_Info *addr);
 void
 dump_WASMAtomicEXTOpcode(Pool_Info *addr);
+void dump_HashMapElem(Pool_Info* addr);
+void dump_HashMap(Pool_Info *addr);
+void dump_timer_ctx_t(Pool_Info *addr);
+void dump_app_timer_t(Pool_Info *addr);
+void dump_bh_queue(Pool_Info *addr);
+void dump_bh_queue_node(Pool_Info *addr);
 void
 dump_ERRO(Pool_Info *addr);
 

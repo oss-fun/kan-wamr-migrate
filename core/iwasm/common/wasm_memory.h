@@ -135,6 +135,12 @@ typedef enum Data_Type {
     WASMMiscEXTOpcodeT,
     WASMSimdEXTOpcodeT,
     WASMAtomicEXTOpcodeT,
+    HashMapElemT,
+    HashMapT,
+    timer_ctx_tT,
+    app_timer_tT,
+    bh_queueT,
+    bh_queue_nodeT,
     DUMMYT,
     ERRORT
 } Data_Type;

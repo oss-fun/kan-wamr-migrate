@@ -58,9 +58,6 @@ malloc_internal(uint64 size)
     if (size < UINT32_MAX && (mem = wasm_runtime_malloc((uint32)size))) {
         memset(mem, 0, size);
     }
-    if (size < UINT32_MAX && size > 0) {
-        alloc_info(mem, DUMMYT);
-    }
     return mem;
 }
 

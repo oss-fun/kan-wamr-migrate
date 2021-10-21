@@ -141,6 +141,13 @@ init_dump_func(void)
     dump_data[WASMMiscEXTOpcodeT] = dump_WASMMiscEXTOpcode;
     dump_data[WASMSimdEXTOpcodeT] = dump_WASMSimdEXTOpcode;
     dump_data[WASMAtomicEXTOpcodeT] = dump_WASMAtomicEXTOpcode;
+
+    dump_data[HashMapElemT] = dump_HashMapElem;
+    dump_data[HashMapT]=dump_HashMap;
+    dump_data[timer_ctx_tT]=dump_timer_ctx_t;
+    dump_data[app_timer_tT]=dump_app_timer_t;
+    dump_data[bh_queueT]=dump_bh_queue;
+    dump_data[bh_queue_nodeT]=dump_bh_queue_node;
 }
 
 #define CASE_INFOS(data_type)                                                 \
@@ -366,6 +373,12 @@ alloc_infos(void *addr, Data_Type type, size_t size)
         CASE_INFOS(WASMMiscEXTOpcode)
         CASE_INFOS(WASMSimdEXTOpcode)
         CASE_INFOS(WASMAtomicEXTOpcode)
+        CASE_INFOS(HashMapElem)
+        CASE_INFOS(HashMap)
+        CASE_INFOS(timer_ctx_t)
+        CASE_INFOS(app_timer_t)
+        CASE_INFOS(bh_queue)
+        CASE_INFOS(bh_queue_node)
         default:
             break;
     }
@@ -374,7 +387,6 @@ alloc_infos(void *addr, Data_Type type, size_t size)
 void
 free_info(void *addr)
 {
-    int i, j;
     Pool_Info *info, *prev, *p;
 
     info = root_info;
@@ -402,6 +414,7 @@ free_info(void *addr)
         prev = info;
         info = info->next;
     }
+
     printf("free error[%p]\n", addr);
 
     info = root_info;
