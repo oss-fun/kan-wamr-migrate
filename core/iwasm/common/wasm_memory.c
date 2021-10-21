@@ -199,7 +199,7 @@ print_WASMExport(void)
 void
 dump_runtime(void)
 {
-    #if WASM_ENABLE_AOT != 0
+    #if WASM_ENABLE_AOT != 0 || WASM_ENABLE_MULTI_MODULE != 0
     return;
 #endif
     Pool_Info *info = root_info;
@@ -390,7 +390,7 @@ alloc_infos(void *addr, Data_Type type, size_t size)
 void
 free_info(void *addr)
 {
-#if WASM_ENABLE_AOT != 0
+#if WASM_ENABLE_AOT != 0 || WASM_ENABLE_MULTI_MODULE != 0
     return;
 #endif
     Pool_Info *info, *prev, *p;
