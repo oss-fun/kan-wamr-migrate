@@ -395,7 +395,6 @@ free_info(void *addr)
         if (info->p_raw == addr) {
             while (info->list) {
                 p = info->list->list;
-                //printf("free[%p]\n", info->list);
                 free(info->list);
 
                 info->list = p;
@@ -407,7 +406,6 @@ free_info(void *addr)
             else {
                 prev->next = info->next;
             }
-            //printf("free[%p]\n", info);
             free(info);
             return;
         }

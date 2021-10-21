@@ -142,6 +142,7 @@ int main(int argc, char *argv_main[])
         goto fail;
     }
 
+    printf("calling\n");
     // pass 4 elements for function arguments
     if (!wasm_runtime_call_wasm(exec_env, func, 4, argv) ) {
         printf("call wasm function generate_float failed. %s\n", wasm_runtime_get_exception(module_inst));
