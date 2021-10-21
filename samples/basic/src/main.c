@@ -95,6 +95,7 @@ int main(int argc, char *argv_main[])
     init_args.native_module_name = "env";
     init_args.native_symbols = native_symbols;
 
+    return;
     if (!wasm_runtime_full_init(&init_args)) {
         printf("Init runtime environment failed.\n");
         return -1;
@@ -141,7 +142,6 @@ int main(int argc, char *argv_main[])
         printf("The generate_float wasm function is not found.\n");
         goto fail;
     }
-    return;
     printf("calling\n");
     // pass 4 elements for function arguments
     if (!wasm_runtime_call_wasm(exec_env, func, 4, argv) ) {
