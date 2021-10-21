@@ -19,7 +19,9 @@
 #include "../interpreter/wasm_interp.h"
 #include "../interpreter/wasm.h"
 #include "wasm_c_api.h"
+#ifdef WASM_ENABLE_LIBC_WASI != 0
 #include "../libraries/libc-wasi/libc_wasi_wrapper.h"
+#endif
 
 typedef enum Memory_Mode {
     MEMORY_MODE_UNKNOWN = 0,
@@ -62,8 +64,8 @@ init_dump_func(void)
     dump_data[argv_environ_valuesT] = dump_argv_environ_values;
     dump_data[uvwasi_tT] = dump_uvwasi_t;
     dump_data[uvwasi_preopen_tT] = dump_uvwasi_preopen_t;
-    dump_data[wasi_iovec_tT]=dump_wasi_iovec_t;
-    dump_data[wasi_ciovec_tT]=dump_wasi_ciovec_t;
+    dump_data[wasi_iovec_tT] = dump_wasi_iovec_t;
+    dump_data[wasi_ciovec_tT] = dump_wasi_ciovec_t;
 
     dump_data[wasm_val_tT] = dump_wasm_val_t;
     dump_data[wasm_instance_tT] = dump_wasm_instance_t;
@@ -224,12 +226,13 @@ dump_runtime(void)
     init_dump(pool_allocator);
 
     while (info) {
-        if(info->type!=WASI_FILE_T){
+        if (info->type != WASI_FILE_T) {
             (*dump_data[info->type])(info);
-        }else{
+        }
+        else {
             printf("WASI_FILE_T\n");
         }
-        
+
         info = info->next;
     }
 }
