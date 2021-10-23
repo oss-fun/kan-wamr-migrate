@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdint.h>
 
+
 int
 intToStr(int x, char *str, int str_len, int digit);
 int
@@ -22,14 +23,18 @@ float
 generate_float(int iteration, double seed1, float seed2)
 {
     float ret;
+    int *p;
 
     printf("calling into WASM function: %s\n", __FUNCTION__);
 
     for (int i = 0; i < iteration; i++) {
         ret += 1.0f / seed1 + seed2;
     }
-    for (uint64_t u = 0; u < 100000; u++) {
-        printf("%llu\n", u);
+
+    for (int i = 0; i < 100000; i++) {
+        p = malloc(sizeof(*p));
+        *p = i;
+        printf("%d\n", i);
     }
     printf("exit from WASM function: %s\n", __FUNCTION__);
 
