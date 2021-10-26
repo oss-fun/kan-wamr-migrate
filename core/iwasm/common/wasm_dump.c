@@ -29,9 +29,15 @@ static WASMModule *wasm_module;
 
 #define DUMP_PTR(attr)                                                        \
     do {                                                                      \
-        unsigned long _p = (unsigned long)attr;                               \
-        _p -= base;                                                           \
-        fwrite(&_p, sizeof(int), 1, fp);                                      \
+        if (attr == NULL) {                                                   \
+            int _n = -1;                                                      \
+            fwrite(&_n, sizeof(int), 1, fp);                                  \
+        }                                                                     \
+        else {                                                                \
+            unsigned long _p = (unsigned long)attr;                           \
+            _p -= base;                                                       \
+            fwrite(&_p, sizeof(int), 1, fp);                                  \
+        }                                                                     \
     } while (0)
 
 void
@@ -506,12 +512,13 @@ dump_WASMExecEnv(Pool_Info *addr)
             uint8 *start_addr = node->block_addr_cache[i][j].start_addr;
             uint8 *else_addr = node->block_addr_cache[i][j].else_addr;
             uint8 *end_addr = node->block_addr_cache[i][j].end_addr;
-        
+
             for (k = 0; k < module_inst->module->function_count; k++) {
                 WASMFunction *function = module_inst->module->functions[k];
                 uint32 ip;
-                
-                if(start_addr==NULL && else_addr==NULL&&end_addr==NULL){
+
+                if (start_addr == NULL && else_addr == NULL
+                    && end_addr == NULL) {
                     ip = 0;
                     fwrite(&ip, sizeof(uint32), 1, fp);
                     fwrite(&ip, sizeof(uint32), 1, fp);
@@ -520,7 +527,7 @@ dump_WASMExecEnv(Pool_Info *addr)
                 }
                 if (CHECK_IP(start_addr) && CHECK_IP(else_addr)
                     && CHECK_IP(end_addr)) {
-                    DUMP_PTR(function->code);//codeバッファの抽象アドレス
+                    DUMP_PTR(function->code); //codeバッファの抽象アドレス
 
                     // const uint8 *start_addr;
                     ip = start_addr - function->code;
@@ -1492,9 +1499,12 @@ dump_BlockType(Pool_Info *addr)
     // skip
 }
 void
-dump_WASMBranchBlock(Pool_Info *addr) //要チェック アロケートはされない
+dump_WASMBranchBlock(
+  Pool_Info
+    *addr) //要チェック アロケートはされない => WASMInterpFrameのstackの最後尾
 {
     printf("WASMBranchBlock\n");
+    exit(1);
     HEADER(WASMBranchBlock)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -1509,12 +1519,10 @@ dump_WASMBranchBlock(Pool_Info *addr) //要チェック アロケートはされ
         fwrite(&node->cell_num, sizeof(uint32), 1, fp);
     }
 }
+
 void
 dump_BranchBlockPatch(Pool_Info *addr)
-{
-    printf("unsupported\n");
-}
-#define WASM_ENABLE_FAST_INTERP 0
+{}
 
 void
 dump_WASMInterpFrame(Pool_Info *addr)
@@ -1528,12 +1536,15 @@ dump_WASMInterpFrame(Pool_Info *addr)
     DUMP_PTR(node->function);
 
     //uint8 *ip;
-    
+
     if (node->function != NULL) {
         uint8 *code = wasm_get_func_code(node->function);
         DUMP_PTR(code); // codeバッファの抽象アドレス
         uint64 ip = node->ip - code;
         fwrite(&ip, sizeof(uint64), 1, fp);
+    }
+    else {
+        return;
     }
 #if WASM_ENABLE_FAST_INTERP != 0
     uint32 ret_offset;
@@ -1551,7 +1562,7 @@ dump_WASMInterpFrame(Pool_Info *addr)
     fwrite(&sp, sizeof(uint64), 1, fp);
 
     WASMBranchBlock *bb = node->csp_bottom;
-    uint32 bb_num = ((uint64)node->csp - (uint64)node->csp_bottom) / sizeof(WASMBranchBlock);
+    uint32 bb_num =node->function->u.func->max_block_num;
     fwrite(&bb_num, sizeof(uint32), 1, fp);
 
     for (int i = 0; i < bb_num; i++, bb++) {

@@ -235,10 +235,17 @@ dump_runtime(void)
         fwrite(&info->type, sizeof(int), 1, fp);
         fwrite(&info->size, sizeof(uint64), 1, fp);
         p = info->list;
-        for (i = 1; i < info->size; i++) {
-            fwrite(&p->p_abs, sizeof(int), 1, fp);
-            p = p->list;
+        if (p == NULL && info->size > 1) { // buffer
+            fputc(0, fp);
         }
+        else {
+            fputc(1, fp);
+            for (i = 1; p != NULL; i++) {
+                fwrite(&p->p_abs, sizeof(int), 1, fp);
+                p = p->list;
+            }
+        }
+
         info = info->next;
     }
 }
