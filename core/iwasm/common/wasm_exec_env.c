@@ -111,9 +111,10 @@ wasm_exec_env_create(struct WASMModuleInstanceCommon *module_inst,
     WASMExecEnv *exec_env =
         wasm_exec_env_create_internal(module_inst, stack_size);
 
+
     if (!exec_env)
         return NULL;
-
+        
     /* Set the aux_stack_boundary and aux_stack_bottom */
 #if WASM_ENABLE_INTERP != 0
     if (module_inst->module_type == Wasm_Module_Bytecode) {

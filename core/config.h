@@ -161,6 +161,7 @@
 #endif
 
 /* Enable fast interpreter or not */
+#define WASM_ENABLE_FAST_INTERP 0
 #ifndef WASM_ENABLE_FAST_INTERP
 #define WASM_ENABLE_FAST_INTERP 0
 #endif

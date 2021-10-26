@@ -34,7 +34,8 @@ generate_float(int iteration, double seed1, float seed2)
     for (int i = 0; i < 100000; i++) {
         p = malloc(sizeof(*p));
         *p = i;
-        printf("%d\n", i);
+        printf("%d\n", *p);
+        free(p);
     }
     printf("exit from WASM function: %s\n", __FUNCTION__);
 

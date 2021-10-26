@@ -14,9 +14,9 @@ extern "C" {
 #endif
 
 typedef enum Data_Type {
-    charT,
-    charTT,
-    uint8T,
+    charT,//char *
+    charTT,//char **
+    uint8T,//uint8 *
     uint16T,
     uint32T,
     uint64T,
@@ -33,7 +33,6 @@ typedef enum Data_Type {
 
     uvwasi_tT,
     uvwasi_preopen_tT,
-
 
     //wasm_export.h
     wasm_val_tT,
@@ -121,7 +120,6 @@ typedef enum Data_Type {
     BranchBlockPatchT,
     WASMLoaderContextT,
     ConstT,
-    
 
     //wasm_runtime.h
     WASMModuleInstanceT,
@@ -135,7 +133,6 @@ typedef enum Data_Type {
     WASMExportGlobInstanceT,
     WASMSubModInstNodeT,
     WASMRuntimeFrameT, // == WASMInterpFrame
-    
 
     //wasm_opcode.h
     WASMOpcodeT,
@@ -167,8 +164,9 @@ typedef struct Pool_Info {
     struct Pool_Info *next;
 } Pool_Info;
 
-void
-print_WASMExport(void);
+void *
+get_raw(int p_abs);
+
 void
 dump_runtime(void);
 void

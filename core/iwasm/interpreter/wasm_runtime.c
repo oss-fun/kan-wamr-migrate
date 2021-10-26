@@ -201,6 +201,9 @@ memory_instantiate(WASMModuleInstance *module_inst,
         /* Disable app heap, use malloc/free function exported
            by wasm app to allocate/free memory instead */
         heap_size = 0;
+        printf("Disable app heap\n");
+    }else{
+        printf("Enable app heap\n");
     }
 
     if (init_page_count == max_page_count && init_page_count == 1) {
@@ -1897,7 +1900,7 @@ wasm_module_malloc(WASMModuleInstance *module_inst,
     WASMMemoryInstance *memory = module_inst->default_memory;
     uint8 *addr = NULL;
     uint32 offset = 0;
-
+    
     if (!memory) {
         wasm_set_exception(module_inst, "uninitialized memory");
         return 0;
@@ -1905,6 +1908,7 @@ wasm_module_malloc(WASMModuleInstance *module_inst,
 
     if (memory->heap_handle) {
         addr = mem_allocator_malloc(memory->heap_handle, size);
+        
     }
     else if (module_inst->malloc_function && module_inst->free_function) {
         if (!execute_malloc_function(module_inst, module_inst->malloc_function,

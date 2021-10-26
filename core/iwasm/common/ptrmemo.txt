@@ -1,0 +1,49 @@
+WASMExecEnv{
+    native_stack_boundary => ?
+    top => restore時
+    top_boundary => スタックサイズが分かる
+    cur_frame => stack内
+}
+
+NativeSymbolsNode{
+    module_name => StringNode::str
+}
+
+WASMExport{ // Done
+    name => StringNode::str
+}
+
+WASMImpoot{ // Done
+    module_name => StringNode::str
+    field_name => StringNode::str
+    WASMFunctionImport{
+        signature => StringNode::str
+        attachment => StringNode::str
+        func_ptr_linkedd => function ptr
+    }
+}
+
+WASMInterpFrame{
+    ip => WASMFunctin::code ?
+    sp_boundary => sp_bottom + max_stack_cell_num
+    sp_bottom => param_cell_num + local_cell_num
+    sp => bufferの途中
+    *WASMBranchBlock{
+        begin_addr => ?
+        target_addr => ?
+        frame_sp => ?
+    }
+}
+
+
+WASMMemoryInstance{
+    memory_data => bufferの先頭
+    memory_data_end => memory_data + memory_data_size => heap_data_end
+    heap_data => memory_data + heap_offset(=num_bytes_per_page)
+    heap_data_end => heap_data + heap_size
+    // heapを無視すればmemory_data ~ heap_dataまでの間をコピーすればrestore出来る
+}
+
+WASMExportFuncInstance{ //Done
+    name => StringNode::str
+}

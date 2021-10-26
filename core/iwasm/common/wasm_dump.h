@@ -1,9 +1,10 @@
-#ifndef WASM_DUMP_H
-#define WASM_DUMP_H
+#ifndef _WASM_DUMP_H
+#define _WASM_DUMP_H
 
 void
 init_dump(void *addr);
-
+void
+set_WASMModule(WASMModule *module);
 void
 dump_char(Pool_Info *addr);
 void
@@ -234,4 +235,4 @@ void dump_AtomicWaitInfo(Pool_Info *addr);
 void
 dump_ERROR(Pool_Info *addr);
 
-#endif // WASM_DUMP_H
+#endif // _WASM_DUMP_H

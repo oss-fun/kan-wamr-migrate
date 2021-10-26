@@ -13,6 +13,7 @@
 #include "wasm_native.h"
 #include "wasm_shared_memory.h"
 #include "wasm_dump.h"
+#include "wasm_restore.h"
 #include "../interpreter/wasm_opcode.h"
 #include "../interpreter/wasm_runtime.h"
 #include "../interpreter/wasm_loader.h"
@@ -55,7 +56,7 @@ init_dump_func(void)
     dump_data[uint32T] = dump_uint32;
     dump_data[uint64T] = dump_uint64;
     dump_data[gc_heap_tT] = dump_gc_heap_t;
-    dump_data[base_addrT] = dump_base_addr;
+
     dump_data[WASIContextT] = dump_WASIContext;
     dump_data[WASMThreadArgT] = dump_WASMThreadArg;
     dump_data[ExternRefMapNodeT] = dump_ExternRefMapNode;
@@ -182,34 +183,33 @@ init_dump_func(void)
         }                                                                     \
         break;
 
-void
-print_WASMExport_internal(Pool_Info *info)
+void *
+get_raw(int p_abs)
 {
-    printf("print_WASMExport_internal\n");
+    Pool_Info *info = root_info, *p;
     while (info) {
-        WASMExport *export = (WASMExport *)info->p_raw;
-        printf("name[%p]:%s\n", export->name, export->name);
-        info = info->list;
+        for (p = info; p != NULL; p = p->list) {
+            if (p_abs == p->p_abs) {
+                return p->p_raw;
+            }
+        }
+        info = info->next;
     }
-    return;
+    return NULL;
 }
 
 void
-print_WASMExport(void)
+restore_runtime(void)
 {
-    Pool_Info *info, *p;
-    info = root_info;
+    FILE *fp;
+    fp = fopen("pool_info.img", "rb");
 
-    while (info) {
-        if (info->type == WASMExportT) {
-            while (info) {
-                WASMExport *export = (WASMExport *)info->p_raw;
-                printf("name[%p]:%s\n", export->name, export->name);
-                info = info->list;
-            }
-            return;
-        }
-        info = info->next;
+    while (!feof(fp)) {
+        //int abs
+        //int type
+        //uint64 size
+
+        if (1) {}
     }
 }
 
@@ -219,8 +219,10 @@ dump_runtime(void)
 #if WASM_ENABLE_AOT != 0 || WASM_ENABLE_MULTI_MODULE != 0
     return;
 #endif
-    Pool_Info *info = root_info;
+    Pool_Info *info = root_info, *p;
     int i;
+    FILE *fp;
+    fp = fopen("pool_info.img", "wb");
 
     init_dump_func();
     init_dump(pool_allocator);
@@ -229,10 +231,14 @@ dump_runtime(void)
         if (info->type != WASI_FILE_T) {
             (*dump_data[info->type])(info);
         }
-        else {
-            printf("WASI_FILE_T\n");
+        fwrite(&info->p_abs, sizeof(int), 1, fp);
+        fwrite(&info->type, sizeof(int), 1, fp);
+        fwrite(&info->size, sizeof(uint64), 1, fp);
+        p = info->list;
+        for (i = 1; i < info->size; i++) {
+            fwrite(&p->p_abs, sizeof(int), 1, fp);
+            p = p->list;
         }
-
         info = info->next;
     }
 }
@@ -240,6 +246,9 @@ dump_runtime(void)
 void
 alloc_info(void *addr, Data_Type type)
 {
+    if (type == WASMModuleT) {
+        set_WASMModule((WASMModule *)addr);
+    }
     alloc_info_buf(addr, type, 1);
 }
 
@@ -463,6 +472,7 @@ free_info(void *addr)
             else {
                 prev->next = info->next;
             }
+
             free(info);
             return;
         }
