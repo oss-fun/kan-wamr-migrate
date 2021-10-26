@@ -32,7 +32,8 @@ wasm_exec_env_create_internal(struct WASMModuleInstanceCommon *module_inst,
     if (total_size >= UINT32_MAX
         || !(exec_env = wasm_runtime_malloc((uint32)total_size)))
         return NULL;
-    alloc_infos(exec_env, WASMExecEnvT, stack_size);
+        
+    alloc_info_ex(exec_env, WASMExecEnvT, stack_size);
 
     memset(exec_env, 0, (uint32)total_size);
 

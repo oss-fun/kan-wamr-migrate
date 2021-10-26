@@ -14,6 +14,7 @@
 #include "wasm_shared_memory.h"
 #include "wasm_dump.h"
 #include "wasm_restore.h"
+#include "wasm_util.h"
 #include "../interpreter/wasm_opcode.h"
 #include "../interpreter/wasm_runtime.h"
 #include "../interpreter/wasm_loader.h"
@@ -43,6 +44,7 @@ static unsigned int global_pool_size;
 #define MAX_LIST_SIZE 512 * 1024
 
 static Pool_Info *root_info = NULL;
+static Pool_Info *root_frame = NULL;
 
 static void (*dump_data[ERRORT])(Pool_Info *addr);
 
@@ -201,15 +203,73 @@ get_raw(int p_abs)
 void
 restore_runtime(void)
 {
+    int i;
+    Pool_Info *info, *p;
     FILE *fp;
     fp = fopen("pool_info.img", "rb");
+    int p_abs;
+    int type;
+    uint64 size;
 
+    set_data_size();
+
+        printf("restore\n");
     while (!feof(fp)) {
-        //int abs
-        //int type
-        //uint64 size
+        fread(&p_abs, sizeof(int), 1, fp);
+        fread(&type, sizeof(int), 1, fp);
+        fread(&size, sizeof(uint64), 1, fp);
 
-        if (1) {}
+        info = malloc(sizeof(Pool_Info));
+        info->p_abs = p_abs;
+        info->type = type;
+        info->size = size;
+        info->list = NULL;
+
+        switch (type) {
+            //offsetof
+            case WASMExecEnvT:
+            case WASMTypeT:
+            case WASMTableInstanceT:
+            case StringNodeT:
+            case WASMFunctionT:
+            if(data_size[type] + size==0){
+                    printf("type:%d\n",type);
+                    printf("%d:%d\n",data_size[type],size);
+                    exit(1);
+                }
+                info->p_raw = wasm_runtime_malloc(data_size[type] + size);
+                info->next = root_info;
+                root_info = info;
+                break;
+
+            case WASMInterpFrameT:
+                info->next = root_frame;
+                root_frame = info;
+                break;
+
+            case WASI_FILE_T:
+            break;
+            default:
+                if(data_size[type] * size==0){
+                    printf("type:%d\n",type);
+                    exit(1);
+                }
+                info->p_raw = wasm_runtime_malloc(data_size[type] * size);
+                for (i = 1; i < size; i++) {
+                    p = malloc(sizeof(Pool_Info));
+                    fread(&p_abs, sizeof(int), 1, fp);
+                    p->p_abs = p_abs;
+                    p->p_raw = info->p_raw + i * size;
+                    p->size = -1;
+                    p->type = type;
+                    p->next = NULL;
+                    p->list = info->list;
+                    info->list = p;
+                }
+                info->next = root_info;
+                root_info = info;
+                break;
+        }
     }
 }
 
@@ -230,24 +290,38 @@ dump_runtime(void)
     while (info) {
         if (info->type != WASI_FILE_T) {
             (*dump_data[info->type])(info);
+        }else{
+            info=info->next;
+            continue;
         }
+        //printf("dump p_abs:%d\n",info->p_abs);
         fwrite(&info->p_abs, sizeof(int), 1, fp);
         fwrite(&info->type, sizeof(int), 1, fp);
         fwrite(&info->size, sizeof(uint64), 1, fp);
-        p = info->list;
-        if (p == NULL && info->size > 1) { // buffer
-            fputc(0, fp);
-        }
-        else {
-            fputc(1, fp);
-            for (i = 1; p != NULL; i++) {
+
+        if (info->list != NULL) {
+            p = info->list;
+            for (i = 1; i < info->size; i++) {
+                //printf("dump p_abs:%d\n",p->p_abs);
                 fwrite(&p->p_abs, sizeof(int), 1, fp);
                 p = p->list;
+            }
+            if (p != NULL) {
+                printf("Dump list error\n");
+                exit(1);
             }
         }
 
         info = info->next;
     }
+    printf("Done\n");
+    fclose(fp);
+    while(root_info){
+        wasm_runtime_free(root_info->p_raw);
+    }
+    printf("free Done\n");
+    root_info = NULL;
+    restore_runtime();
 }
 
 void
@@ -479,7 +553,7 @@ free_info(void *addr)
             else {
                 prev->next = info->next;
             }
-
+            //printf("free:%d\n",info->type);
             free(info);
             return;
         }

@@ -14,9 +14,9 @@ extern "C" {
 #endif
 
 typedef enum Data_Type {
-    charT,//char *
-    charTT,//char **
-    uint8T,//uint8 *
+    charT,
+    charTT,
+    uint8T,
     uint16T,
     uint32T,
     uint64T,
@@ -158,7 +158,7 @@ typedef enum Data_Type {
 typedef struct Pool_Info {
     int p_abs;
     void *p_raw;
-    size_t size;
+    int size;
     Data_Type type;
     struct Pool_Info *list;
     struct Pool_Info *next;
@@ -167,6 +167,8 @@ typedef struct Pool_Info {
 void *
 get_raw(int p_abs);
 
+void
+restore_runtime(void);
 void
 dump_runtime(void);
 void

@@ -17,12 +17,14 @@ static WASMModule *wasm_module;
 
 #define HEADER_BUF(Type)                                                      \
     Type *node = (Type *)addr->p_raw;                                         \
-    fputc(Type##T, fp);                                                       \
+    int _type = Type##T;                                                      \
+    fwrite(&_type, sizeof(int), 1, fp);                                       \
     fwrite(&addr->size, sizeof(uint64), 1, fp);                               \
     fwrite(&addr->p_abs, sizeof(int), 1, fp)
 
 #define HEADER(Type)                                                          \
-    fputc(Type##T, fp);                                                       \
+    int _type = Type##T;                                                      \
+    fwrite(&_type, sizeof(int), 1, fp);                                       \
     fwrite(&addr->size, sizeof(uint64), 1, fp);                               \
     for (Type *node = (Type *)addr->p_raw; addr != NULL; addr = addr->list,   \
               node = (addr != NULL) ? (Type *)addr->p_raw : NULL)
@@ -59,7 +61,8 @@ set_WASMModule(WASMModule *module)
 void
 dump_char(Pool_Info *addr) //buf
 {
-    fputc(charT, fp);
+    int _type = charT;
+    fwrite(&_type, sizeof(int), 1, fp);
     fwrite(&addr->size, sizeof(uint64), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
     fwrite((char *)addr->p_raw, sizeof(char), addr->size, fp);
@@ -69,7 +72,8 @@ void
 dump_charT(Pool_Info *addr)
 {
     int i;
-    fputc(charTT, fp);
+    int _type = charTT;
+    fwrite(&_type, sizeof(int), 1, fp);
     fwrite(&addr->size, sizeof(uint64), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -82,7 +86,8 @@ dump_charT(Pool_Info *addr)
 void
 dump_uint8(Pool_Info *addr)
 {
-    fputc(uint8T, fp);
+    int _type = uint8T;
+    fwrite(&_type, sizeof(int), 1, fp);
     fwrite(&addr->size, sizeof(uint64), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
     fwrite((uint8 *)addr->p_raw, sizeof(uint8), addr->size, fp);
@@ -90,7 +95,8 @@ dump_uint8(Pool_Info *addr)
 void
 dump_uint16(Pool_Info *addr)
 {
-    fputc(uint16T, fp);
+    int _type = uint16T;
+    fwrite(&_type, sizeof(int), 1, fp);
     fwrite(&addr->size, sizeof(uint64), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
     fwrite((uint16 *)addr->p_raw, sizeof(uint16), addr->size, fp);
@@ -99,7 +105,8 @@ dump_uint16(Pool_Info *addr)
 void
 dump_uint32(Pool_Info *addr)
 {
-    fputc(uint32T, fp);
+    int _type = uint32T;
+    fwrite(&_type, sizeof(int), 1, fp);
     fwrite(&addr->size, sizeof(uint64), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
     fwrite((uint32 *)addr->p_raw, sizeof(uint32), addr->size, fp);
@@ -108,7 +115,8 @@ dump_uint32(Pool_Info *addr)
 void
 dump_uint64(Pool_Info *addr)
 {
-    fputc(uint64T, fp);
+    int _type = uint64T;
+    fwrite(&_type, sizeof(int), 1, fp);
     fwrite(&addr->size, sizeof(uint64), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
     fwrite((uint64 *)addr->p_raw, sizeof(uint64), addr->size, fp);
@@ -904,7 +912,8 @@ void
 dump_WASMFunctionT(Pool_Info *addr)
 {
     int i;
-    fputc(WASMFunctionTT, fp);
+    int _type = WASMFunctionTT;
+    fwrite(&_type, sizeof(int), 1, fp);
     fwrite(&addr->size, sizeof(uint64), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -1113,7 +1122,8 @@ void
 dump_WASMTypeT(Pool_Info *addr)
 {
     int i;
-    fputc(WASMTypeTT, fp);
+    int _type = WASMTypeTT;
+    fwrite(&_type, sizeof(int), 1, fp);
     fwrite(&addr->size, sizeof(uint64), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -1450,7 +1460,8 @@ void
 dump_WASMDataSegT(Pool_Info *addr)
 {
     int i;
-    fputc(WASMDataSegTT, fp);
+    int _type = WASMDataSegTT;
+    fwrite(&_type, sizeof(int), 1, fp);
     fwrite(&addr->size, sizeof(uint64), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -1522,7 +1533,9 @@ dump_WASMBranchBlock(
 
 void
 dump_BranchBlockPatch(Pool_Info *addr)
-{}
+{
+    printf("unsupported\n");
+}
 
 void
 dump_WASMInterpFrame(Pool_Info *addr)
@@ -1562,7 +1575,7 @@ dump_WASMInterpFrame(Pool_Info *addr)
     fwrite(&sp, sizeof(uint64), 1, fp);
 
     WASMBranchBlock *bb = node->csp_bottom;
-    uint32 bb_num =node->function->u.func->max_block_num;
+    uint32 bb_num = node->function->u.func->max_block_num;
     fwrite(&bb_num, sizeof(uint32), 1, fp);
 
     for (int i = 0; i < bb_num; i++, bb++) {
@@ -1802,7 +1815,8 @@ void
 dump_WASMMemoryInstanceT(Pool_Info *addr)
 {
     int i;
-    fputc(WASMMemoryInstanceTT, fp);
+    int _type = WASMMemoryInstanceTT;
+    fwrite(&_type, sizeof(int), 1, fp);
     fwrite(&addr->size, sizeof(uint64), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -1831,7 +1845,8 @@ void
 dump_WASMTableInstanceT(Pool_Info *addr)
 {
     int i;
-    fputc(WASMTableInstanceTT, fp);
+    int _type = WASMTableInstanceTT;
+    fwrite(&_type, sizeof(int), 1, fp);
     fwrite(&addr->size, sizeof(uint64), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -1929,71 +1944,74 @@ dump_WASMExportFuncInstance(Pool_Info *addr)
 void
 dump_WASMExportGlobInstance(Pool_Info *addr)
 {
-    printf("WASMExportGlobInstance\n");
+    printf("unsupported\n");
 }
 void
 dump_WASMSubModInstNode(Pool_Info *addr)
 {
-    printf("WASMSubModInstNode\n");
+    printf("unsupported\n");
 }
 
 void
 dump_WASMRuntimeFrame(Pool_Info *addr)
 {
-    printf("WASMRuntimeFrame\n");
+    printf("unsupported\n");
 }
 
 void
 dump_WASMOpcode(Pool_Info *addr)
 {
-    printf("WASMOpcode\n");
+    printf("unsupported\n");
     // enum
 }
 void
 dump_WASMMiscEXTOpcode(Pool_Info *addr)
 {
+    printf("unsupported\n");
     // enum
 }
 void
 dump_WASMSimdEXTOpcode(Pool_Info *addr)
 {
+    printf("unsupported\n");
     // enum
 }
 void
 dump_WASMAtomicEXTOpcode(Pool_Info *addr)
 {
+    printf("unsupported\n");
     // enum
 }
 
 void
 dump_HashMapElem(Pool_Info *addr)
 {
-    printf("HashMapElem\n");
+    printf("unsupported\n");
 }
 void
 dump_HashMap(Pool_Info *addr)
 {
-    printf("HashMap\n");
+    printf("unsupported\n");
 }
 void
 dump_timer_ctx_t(Pool_Info *addr)
 {
-    printf("timer_ctx_t\n");
+    printf("unsupported\n");
 }
 void
 dump_app_timer_t(Pool_Info *addr)
 {
-    printf("app_timer_t\n");
+    printf("unsupported\n");
 }
 void
 dump_bh_queue(Pool_Info *addr)
 {
-    printf("bh_queue\n");
+    printf("unsupported\n");
 }
 void
 dump_bh_queue_node(Pool_Info *addr)
 {
-    printf("bh_queue_node\n");
+    printf("unsupported\n");
 }
 void
 dump_AtomicWaitInfo(Pool_Info *addr)
@@ -2009,10 +2027,10 @@ dump_AtomicWaitNode(Pool_Info *addr)
 void
 dump_wasi_iovec_t(Pool_Info *addr)
 {
-    printf("wasi_iovec_t\n");
+    printf("unsupported\n");
 }
 void
 dump_wasi_ciovec_t(Pool_Info *addr)
 {
-    printf("wasi_ciovec_t\n");
+    printf("unsupported\n");
 }
