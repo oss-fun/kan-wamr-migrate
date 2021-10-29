@@ -13,9 +13,9 @@
 
 static FILE *fp, *gp;
 static unsigned long base;
-static WASMModule *wasm_module;
-static WASMModuleInstance *wasm_module_inst;
-static WASMExecEnv *wasm_exec_env;
+static WASMModule *_module_static;
+static WASMModuleInstance *_module_inst_static;
+static WASMExecEnv *_exec_env_static;
 
 #define HEADER_RESTORE_BUF(Type) Type *node = (Type *)addr->p_raw
 
@@ -219,8 +219,8 @@ restore_frame_internal(void)
     info = get_root_frame_info();
 
     while (info) {
-        frame = wasm_interp_alloc_frame(wasm_exec_env, info->size, prev);
-        wasm_exec_env_set_cur_frame(wasm_exec_env, frame);
+        frame = wasm_interp_alloc_frame(_exec_env_static, info->size, prev);
+        wasm_exec_env_set_cur_frame(_exec_env_static, frame);
         prev = frame;
         info->p_raw = frame;
         info = info->next;
@@ -237,38 +237,38 @@ restore_frame_internal(void)
     }
 
     if (!wasm_runtime_init_wasi(
-          (WASMModuleInstanceCommon *)wasm_module_inst,
-          wasm_module->wasi_args.dir_list, wasm_module->wasi_args.dir_count,
-          wasm_module->wasi_args.map_dir_list,
-          wasm_module->wasi_args.map_dir_count, wasm_module->wasi_args.env,
-          wasm_module->wasi_args.env_count, wasm_module->wasi_args.argv,
-          wasm_module->wasi_args.argc, wasm_module->wasi_args.stdio[0],
-          wasm_module->wasi_args.stdio[1], wasm_module->wasi_args.stdio[2],
-          error_buf, sizeof(error_buf))) {
+          (WASMModuleInstanceCommon *)_module_inst_static,
+          _module_static->wasi_args.dir_list,
+          _module_static->wasi_args.dir_count,
+          _module_static->wasi_args.map_dir_list,
+          _module_static->wasi_args.map_dir_count,
+          _module_static->wasi_args.env, _module_static->wasi_args.env_count,
+          _module_static->wasi_args.argv, _module_static->wasi_args.argc,
+          _module_static->wasi_args.stdio[0],
+          _module_static->wasi_args.stdio[1],
+          _module_static->wasi_args.stdio[2], error_buf, sizeof(error_buf))) {
         printf("error init wasi\n");
     }
     else {
         printf("init wasi\n");
     }
 
-    WASMImport *import = wasm_module->import_functions;
-    printf("import_functions:%p\n", wasm_module->import_functions);
-    for (i = 0; i < wasm_module->import_function_count; i++, import++) {
+    WASMImport *import = _module_static->import_functions;
+    for (i = 0; i < _module_static->import_function_count; i++, import++) {
         const char *linked_signature = NULL;
         void *linked_attachment = NULL;
         bool linked_call_conv_raw = false;
         bool is_native_symbol = false;
-        printf("link: %p\n", import->u.names.field_name);
-        printf("type: %p\n", import->u.function.func_type);
-
 
         WASMFunction *linked_func = wasm_native_resolve_symbol(
-          import->u.names.module_name, (uint64)import->u.names.field_name & 0x0000ffffffffffff,
+          import->u.names.module_name, import->u.names.field_name,
           import->u.function.func_type, &linked_signature, &linked_attachment,
           &linked_call_conv_raw);
 
         if (linked_func) {
             is_native_symbol = true;
+        }else{
+            printf("error linked\n");
         }
         WASMFunctionImport *function = &import->u.function;
         function->func_ptr_linked = is_native_symbol ? linked_func : NULL;
@@ -671,7 +671,7 @@ restore_WASMExecEnv(Pool_Info *addr)
     Pool_Info *info;
     HEADER_RESTORE_BUF(WASMExecEnv);
 
-    wasm_exec_env = node;
+    _exec_env_static = node;
 
     //struct WASMExecEnv *next;
     RESTORE_PTR(node->next);
@@ -964,7 +964,7 @@ restore_WASMModule(Pool_Info *addr) // 要チェック
 {
     int p_abs;
     Pool_Info *info;
-    wasm_module = addr->p_raw;
+    _module_static = addr->p_raw;
     HEADER_RESTORE(WASMModule)
     {
         fread(&p_abs, sizeof(int), 1, fp);
@@ -1452,7 +1452,7 @@ restore_WASMGlobalImport(Pool_Info *addr)
 void
 restore_WASMImport(Pool_Info *addr)
 {
-    int p_abs;
+    int p_abs,i;
     StringNode *str_node;
     HEADER_RESTORE(WASMImport)
     {
@@ -1464,14 +1464,14 @@ restore_WASMImport(Pool_Info *addr)
 
         // uint8 kind;
         fread(&node->kind, sizeof(uint8), 1, fp);
+
         // node->u.names.module_name
         RESTORE_PTR(str_node);
-        node->u.names.module_name = (uint8 *)str_node + sizeof(StringNode);
+        node->u.names.module_name = ((char *)str_node) + sizeof(StringNode);
 
         // node->u.names.field_name
         RESTORE_PTR(str_node);
-        node->u.names.field_name = (uint8 *)str_node + sizeof(StringNode);
-        
+        node->u.names.field_name = ((char *)str_node) + sizeof(StringNode);
 
         /*union {
             WASMFunctionImport function;
@@ -1487,6 +1487,7 @@ restore_WASMImport(Pool_Info *addr)
             case IMPORT_KIND_FUNC:
                 // WASMType *func_type;
                 RESTORE_PTR(node->u.function.func_type);
+
                 // void *func_ptr_linked;
                 /* restore時に再設定 */
 
@@ -1766,7 +1767,8 @@ restore_StringNode(Pool_Info *addr)
     }
     //struct StringNode *next;
     RESTORE_PTR(node->next);
-    node->str = (uint8 *)node + sizeof(StringNode);
+
+    node->str = ((char *)node) + sizeof(StringNode);
     //char *str;
     fread(node->str, sizeof(char), size, fp);
 }
@@ -1841,7 +1843,7 @@ restore_WASMInterpFrame(Pool_Info *addr)
     //DUMP_PTR(node->sp);
     uint64 sp; // = node->sp - node->sp_bottom;
     fread(&sp, sizeof(uint64), 1, gp);
-    node->sp = (uint8 *)node->sp_bottom + sp;
+    node->sp = ((char *)node->sp_bottom) + sp;
 
     WASMBranchBlock *bb;
     uint32 bb_num;
@@ -1950,7 +1952,7 @@ void
 restore_WASMModuleInstance(Pool_Info *addr)
 {
     int p_abs;
-    wasm_module_inst = addr->p_raw;
+    _module_inst_static = addr->p_raw;
     HEADER_RESTORE(WASMModuleInstance)
     {
         fread(&p_abs, sizeof(int), 1, fp);
@@ -2087,7 +2089,7 @@ restore_WASMFunctionInstance(Pool_Info *addr)
             node->param_types = type->types;
 
             // uint8 *local_types; == (uint8*)func + sizeof(WASMFunction)
-            node->local_types = (uint8 *)node->u.func + sizeof(WASMFunction);
+            node->local_types = ((uint8 *)node->u.func) + sizeof(WASMFunction);
         }
     }
 }
@@ -2255,7 +2257,7 @@ restore_WASMExportFuncInstance(Pool_Info *addr)
 
         //     char *name;
         RESTORE_PTR(str_node);
-        node->name = (uint8 *)str_node + sizeof(StringNode);
+        node->name = ((char *)str_node) + sizeof(StringNode);
 
         //     WASMFunctionInstance *function;
         RESTORE_PTR(node->function);

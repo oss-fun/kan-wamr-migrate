@@ -5,6 +5,7 @@ void
 init_dump(void *addr);
 void
 set_WASMModule(WASMModule *module);
+void set_WASMExecEnv(WASMExecEnv *exec_env);
 void
 dump_char(Pool_Info *addr);
 void

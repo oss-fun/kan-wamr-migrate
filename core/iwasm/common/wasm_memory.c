@@ -331,7 +331,7 @@ restore_runtime(void)
                     p = calloc(1, sizeof(Pool_Info));
                     fread(&p_abs, sizeof(int), 1, fp);
                     p->p_abs = p_abs;
-                    p->p_raw = info->p_raw + i * size;
+                    p->p_raw = info->p_raw + i * data_size[type];
                     p->size = -1;
                     p->type = type;
                     p->next = NULL;
@@ -379,7 +379,7 @@ dump_runtime(void)
         fwrite(&info->p_abs, sizeof(int), 1, fp);
         fwrite(&info->type, sizeof(int), 1, fp);
         fwrite(&info->size, sizeof(int), 1, fp);
-        printf("%d:%d:%d\n", info->p_abs, info->type, info->size);
+        //printf("%d:%d:%d\n", info->p_abs, info->type, info->size);
         if (info->list != NULL) {
             p = info->list;
             for (i = 1; i < info->size; i++) {
@@ -436,6 +436,11 @@ alloc_info_ex(void *addr, Data_Type type, size_t size)
         printf("error\n");
         exit(1);
     }
+    if (type==WASMExecEnvT)
+    {
+        set_WASMExecEnv(addr);
+    }
+    
 #ifdef __FREE_DEBUG
     printf("ex:[%p]:[%d]:[%ld]\n", addr, type, size);
 #endif

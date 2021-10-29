@@ -730,8 +730,8 @@ word_copy(uint32 *dest, uint32 *src, unsigned num)
 
 WASMInterpFrame *
 wasm_interp_alloc_frame(WASMExecEnv *exec_env,
-                 uint32 size,
-                 WASMInterpFrame *prev_frame)
+                        uint32 size,
+                        WASMInterpFrame *prev_frame)
 {
     WASMInterpFrame *frame = wasm_exec_env_alloc_wasm_frame(exec_env, size);
 
@@ -753,7 +753,7 @@ static inline WASMInterpFrame *
 ALLOC_FRAME(WASMExecEnv *exec_env, uint32 size, WASMInterpFrame *prev_frame)
 {
     WASMInterpFrame *frame = wasm_exec_env_alloc_wasm_frame(exec_env, size);
-    
+
     if (frame) {
         frame->prev_frame = prev_frame;
         alloc_info_ex(frame, WASMInterpFrameT, size);
@@ -992,8 +992,38 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
         migr_count++;
         if (migr_count == 100000 || sig_flag) {
             printf("checkpoint\n");
-
+            SYNC_ALL_TO_FRAME();
             dump_runtime();
+
+
+            /*
+            WASMMemoryInstance *memory = module->default_memory;
+            uint32 num_bytes_per_page =
+              memory ? memory->num_bytes_per_page : 0;
+            uint8 *global_data = module->global_data;
+            uint32 linear_mem_size =
+              memory ? num_bytes_per_page * memory->cur_page_count : 0;
+            WASMType **wasm_types = module->module->types;
+            WASMGlobalInstance *globals = module->globals, *global;
+            uint8 opcode_IMPDEP = WASM_OP_IMPDEP;
+            WASMInterpFrame *frame = NULL;
+
+            register uint8 *frame_ip = &opcode_IMPDEP;
+            register uint32 *frame_lp = NULL;
+            register uint32 *frame_sp = NULL;
+            WASMBranchBlock *frame_csp = NULL;
+            BlockAddr *cache_items;
+            uint8 *frame_ip_end = frame_ip + 1;
+            uint8 opcode;
+            uint32 i, depth, cond, count, fidx, tidx, lidx, frame_size = 0;
+            uint64 all_cell_num = 0;
+            int32 val;
+            uint8 *else_addr, *end_addr, *maddr = NULL;
+            uint32 local_idx, local_offset, global_idx;
+            uint8 local_type, *global_addr;
+            uint32 cache_index, type_index, cell_num;
+            uint8 value_type;*/
+
             exit(0);
         }
         switch (opcode) {
