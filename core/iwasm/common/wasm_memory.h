@@ -164,8 +164,14 @@ typedef struct Pool_Info {
     struct Pool_Info *next;
 } Pool_Info;
 
-void *
-get_raw(int p_abs);
+Pool_Info *
+get_info(int p_abs);
+
+Pool_Info *
+get_frame_info(int p_abs);
+
+Pool_Info *
+get_root_frame_info(void);
 
 void
 restore_runtime(void);

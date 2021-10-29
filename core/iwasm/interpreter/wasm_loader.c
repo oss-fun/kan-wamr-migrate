@@ -2758,6 +2758,7 @@ load_data_segment_section(const uint8 *buf,
             if(!(dataseg->data = loader_malloc(data_seg_len,error_buf,error_buf_size))){
                 return false;
             }
+            alloc_info_buf(dataseg->data, uint8T, data_seg_len);
             bh_memcpy_s(dataseg->data, dataseg->data_length, p, data_seg_len);
             p += data_seg_len;
         }

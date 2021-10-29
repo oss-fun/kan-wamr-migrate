@@ -1,0 +1,11 @@
+1. WASMMemoryInstanceのheap
+
+2. WASMModuleInstanceのctx
+
+3. WASMModule::wasi_args等のWASI周り
+
+4. InterpFrameのスタック
+- maybe done.
+
+
+5. NativeSymbolとfunc_ptr_linkedの再生

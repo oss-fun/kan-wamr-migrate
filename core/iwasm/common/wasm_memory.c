@@ -185,19 +185,50 @@ init_dump_func(void)
         }                                                                     \
         break;
 
-void *
-get_raw(int p_abs)
+Pool_Info *
+get_info(int p_abs)
 {
     Pool_Info *info = root_info, *p;
+    if (p_abs == -1) {
+        return NULL;
+    }
     while (info) {
         for (p = info; p != NULL; p = p->list) {
             if (p_abs == p->p_abs) {
-                return p->p_raw;
+                return p;
             }
         }
         info = info->next;
     }
+    printf("error p_abs:%d\n", p_abs);
+    exit(1);
+
     return NULL;
+}
+
+Pool_Info *
+get_frame_info(int p_abs)
+{
+    Pool_Info *info = root_frame, *p;
+    if (p_abs == -1) {
+        return NULL;
+    }
+    while (info) {
+        if(info->p_abs==p_abs){
+            return info;
+        }
+        info = info->next;
+    }
+    printf("error frame p_abs:%d\n", p_abs);
+    exit(1);
+
+    return NULL;
+}
+
+Pool_Info *
+get_root_frame_info(void)
+{
+    return root_frame;
 }
 
 void
@@ -209,17 +240,19 @@ restore_runtime(void)
     fp = fopen("pool_info.img", "rb");
     int p_abs;
     int type;
-    uint64 size;
+    int size;
 
     set_data_size();
+    init_restore();
 
-        printf("restore\n");
     while (!feof(fp)) {
-        fread(&p_abs, sizeof(int), 1, fp);
+        if (fread(&p_abs, sizeof(int), 1, fp) == 0) {
+            break;
+        }
         fread(&type, sizeof(int), 1, fp);
-        fread(&size, sizeof(uint64), 1, fp);
+        fread(&size, sizeof(int), 1, fp);
 
-        info = malloc(sizeof(Pool_Info));
+        info = calloc(1, sizeof(Pool_Info));
         info->p_abs = p_abs;
         info->type = type;
         info->size = size;
@@ -232,9 +265,9 @@ restore_runtime(void)
             case WASMTableInstanceT:
             case StringNodeT:
             case WASMFunctionT:
-            if(data_size[type] + size==0){
-                    printf("type:%d\n",type);
-                    printf("%d:%d\n",data_size[type],size);
+                if (data_size[type] + size == 0) {
+                    printf("type:%d\n", type);
+                    printf("%d:%d\n", data_size[type], size);
                     exit(1);
                 }
                 info->p_raw = wasm_runtime_malloc(data_size[type] + size);
@@ -243,34 +276,77 @@ restore_runtime(void)
                 break;
 
             case WASMInterpFrameT:
-                info->next = root_frame;
-                root_frame = info;
+                if (root_frame == NULL) {
+                    info->next = root_frame;
+                    root_frame = info;
+                }
+                else {
+                    Pool_Info *p = root_frame, *q = NULL;
+                    while (p != NULL && info->p_abs > p->p_abs) {
+                        q = p;
+                        p = p->next;
+                    }
+                    if (q == NULL) {
+                        info->next=root_frame;
+                        root_frame = info;
+                    }
+                    else {
+                        q->next = info;
+                        info->next = p;
+                    }
+                }
                 break;
 
+            case WASIContextT:
+            case fd_tableT:
+            case fd_prestatsT:
+            case argv_environ_valuesT:
             case WASI_FILE_T:
-            break;
+                break;
+
+            case charT:
+            case charTT:
+            case uint8T:
+            case uint16T:
+            case uint32T:
+            case uint64T:
+            case WASMFunctionTT:
+            case WASMTypeTT:
+            case WASMDataSegTT:
+            case WASMMemoryInstanceTT:
+            case WASMTableInstanceTT:
+                info->p_raw = wasm_runtime_malloc(data_size[type] * size);
+                info->next = root_info;
+                root_info = info;
+                break;
+
             default:
-                if(data_size[type] * size==0){
-                    printf("type:%d\n",type);
+                if (data_size[type] * size == 0) {
+                    printf("default type:%d\n", type);
                     exit(1);
                 }
                 info->p_raw = wasm_runtime_malloc(data_size[type] * size);
+                Pool_Info *q=info;
                 for (i = 1; i < size; i++) {
-                    p = malloc(sizeof(Pool_Info));
+                    p = calloc(1, sizeof(Pool_Info));
                     fread(&p_abs, sizeof(int), 1, fp);
                     p->p_abs = p_abs;
                     p->p_raw = info->p_raw + i * size;
                     p->size = -1;
                     p->type = type;
                     p->next = NULL;
-                    p->list = info->list;
-                    info->list = p;
+                    p->list=NULL;
+                    q->list = p;
+                    q = p;
                 }
                 info->next = root_info;
                 root_info = info;
                 break;
         }
     }
+
+    restore_internal();
+    restore_frame_internal();
 }
 
 void
@@ -288,17 +364,22 @@ dump_runtime(void)
     init_dump(pool_allocator);
 
     while (info) {
-        if (info->type != WASI_FILE_T) {
-            (*dump_data[info->type])(info);
-        }else{
-            info=info->next;
-            continue;
+        switch (info->type) {
+            case WASI_FILE_T:
+            case NativeSymbolsNodeT:
+            case fd_prestatsT:
+            case fd_tableT:
+            case argv_environ_valuesT:
+                info = info->next;
+                continue;
+            default:
+                (*dump_data[info->type])(info);
         }
         //printf("dump p_abs:%d\n",info->p_abs);
         fwrite(&info->p_abs, sizeof(int), 1, fp);
         fwrite(&info->type, sizeof(int), 1, fp);
-        fwrite(&info->size, sizeof(uint64), 1, fp);
-
+        fwrite(&info->size, sizeof(int), 1, fp);
+        printf("%d:%d:%d\n", info->p_abs, info->type, info->size);
         if (info->list != NULL) {
             p = info->list;
             for (i = 1; i < info->size; i++) {
@@ -316,12 +397,6 @@ dump_runtime(void)
     }
     printf("Done\n");
     fclose(fp);
-    while(root_info){
-        wasm_runtime_free(root_info->p_raw);
-    }
-    printf("free Done\n");
-    root_info = NULL;
-    restore_runtime();
 }
 
 void

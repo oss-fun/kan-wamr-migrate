@@ -1872,7 +1872,6 @@ wasm_runtime_set_wasi_args_ex(WASMModuleCommon *module,
                               int stderrfd)
 {
     WASIArguments *wasi_args = NULL;
-
 #if WASM_ENABLE_INTERP != 0 || WASM_ENABLE_JIT != 0
     if (module->module_type == Wasm_Module_Bytecode)
         wasi_args = &((WASMModule *)module)->wasi_args;

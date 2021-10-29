@@ -11,21 +11,29 @@
 #include "../interpreter/wasm_loader.h"
 #include "../interpreter/wasm_runtime.h"
 
-static FILE *fp;
+static FILE *fp, *gp;
 static unsigned long base;
 static WASMModule *wasm_module;
 
-#define HEADER_BUF(Type)                                                      \
+#define HEADER_DUMP_BUF(Type)                                                 \
     Type *node = (Type *)addr->p_raw;                                         \
     int _type = Type##T;                                                      \
     fwrite(&_type, sizeof(int), 1, fp);                                       \
-    fwrite(&addr->size, sizeof(uint64), 1, fp);                               \
+    fwrite(&addr->size, sizeof(int), 1, fp);                                  \
     fwrite(&addr->p_abs, sizeof(int), 1, fp)
 
-#define HEADER(Type)                                                          \
+#define HEADER_DUMP_FRAME_BUF(Type)                                           \
+    Type *node = (Type *)addr->p_raw;                                         \
+    int _type = Type##T;                                                      \
+    fwrite(&_type, sizeof(int), 1, gp);                                       \
+    fwrite(&addr->size, sizeof(int), 1, gp);                                  \
+    fwrite(&addr->p_abs, sizeof(int), 1, gp)
+
+#define HEADER_DUMP(Type)                                                     \
     int _type = Type##T;                                                      \
     fwrite(&_type, sizeof(int), 1, fp);                                       \
-    fwrite(&addr->size, sizeof(uint64), 1, fp);                               \
+    fwrite(&addr->size, sizeof(int), 1, fp);                                  \
+    fwrite(&addr->p_abs, sizeof(int), 1, fp);                                 \
     for (Type *node = (Type *)addr->p_raw; addr != NULL; addr = addr->list,   \
               node = (addr != NULL) ? (Type *)addr->p_raw : NULL)
 
@@ -42,10 +50,27 @@ static WASMModule *wasm_module;
         }                                                                     \
     } while (0)
 
+#define DUMP_FRAME_PTR(attr)                                                  \
+    do {                                                                      \
+        if (attr == NULL) {                                                   \
+            int _n = -1;                                                      \
+            fwrite(&_n, sizeof(int), 1, gp);                                  \
+        }                                                                     \
+        else {                                                                \
+            unsigned long _p = (unsigned long)attr;                           \
+            _p -= base;                                                       \
+            fwrite(&_p, sizeof(int), 1, gp);                                  \
+        }                                                                     \
+    } while (0)
+
 void
 init_dump(void *addr)
 {
     if ((fp = fopen("dump.img", "wb")) == NULL) {
+        printf("file open error\n");
+        exit(1);
+    }
+    if ((gp = fopen("frame.img", "wb")) == NULL) {
         printf("file open error\n");
         exit(1);
     }
@@ -63,7 +88,7 @@ dump_char(Pool_Info *addr) //buf
 {
     int _type = charT;
     fwrite(&_type, sizeof(int), 1, fp);
-    fwrite(&addr->size, sizeof(uint64), 1, fp);
+    fwrite(&addr->size, sizeof(int), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
     fwrite((char *)addr->p_raw, sizeof(char), addr->size, fp);
 }
@@ -74,13 +99,11 @@ dump_charT(Pool_Info *addr)
     int i;
     int _type = charTT;
     fwrite(&_type, sizeof(int), 1, fp);
-    fwrite(&addr->size, sizeof(uint64), 1, fp);
+    fwrite(&addr->size, sizeof(int), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
-    char **raw = addr->p_raw;
     for (i = 0; i < addr->size; i++) {
-        DUMP_PTR(raw);
-        raw++;
+        DUMP_PTR(((char **)addr->p_raw)[i]);
     }
 }
 void
@@ -88,7 +111,7 @@ dump_uint8(Pool_Info *addr)
 {
     int _type = uint8T;
     fwrite(&_type, sizeof(int), 1, fp);
-    fwrite(&addr->size, sizeof(uint64), 1, fp);
+    fwrite(&addr->size, sizeof(int), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
     fwrite((uint8 *)addr->p_raw, sizeof(uint8), addr->size, fp);
 }
@@ -97,7 +120,7 @@ dump_uint16(Pool_Info *addr)
 {
     int _type = uint16T;
     fwrite(&_type, sizeof(int), 1, fp);
-    fwrite(&addr->size, sizeof(uint64), 1, fp);
+    fwrite(&addr->size, sizeof(int), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
     fwrite((uint16 *)addr->p_raw, sizeof(uint16), addr->size, fp);
 }
@@ -107,7 +130,7 @@ dump_uint32(Pool_Info *addr)
 {
     int _type = uint32T;
     fwrite(&_type, sizeof(int), 1, fp);
-    fwrite(&addr->size, sizeof(uint64), 1, fp);
+    fwrite(&addr->size, sizeof(int), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
     fwrite((uint32 *)addr->p_raw, sizeof(uint32), addr->size, fp);
 }
@@ -117,7 +140,7 @@ dump_uint64(Pool_Info *addr)
 {
     int _type = uint64T;
     fwrite(&_type, sizeof(int), 1, fp);
-    fwrite(&addr->size, sizeof(uint64), 1, fp);
+    fwrite(&addr->size, sizeof(int), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
     fwrite((uint64 *)addr->p_raw, sizeof(uint64), addr->size, fp);
 }
@@ -126,7 +149,9 @@ void
 dump_gc_heap_t(Pool_Info *addr)
 {
     int i;
-    HEADER(gc_heap_t)
+    printf("skip gc_heap_t\n");
+    return;
+    HEADER_DUMP(gc_heap_t)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -166,7 +191,7 @@ dump_gc_heap_t(Pool_Info *addr)
 void
 dump_base_addr(Pool_Info *addr)
 {
-    // skip
+    printf("unsupported:%d\n", addr->type);
 }
 
 void
@@ -175,7 +200,7 @@ dump_WASIContext(Pool_Info *addr)
     printf("skip WASIContext\n");
     return;
 #if WASM_ENABLE_LIBC_WASI != 0
-    HEADER(WASIContext)
+    HEADER_DUMP(WASIContext)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -217,8 +242,9 @@ dump_WASIContext(Pool_Info *addr)
 void
 dump_WASMThreadArg(Pool_Info *addr)
 {
+    printf("unsupported:%d\n", addr->type);
     /*
-    HEADER(WASMThreadArg);
+    HEADER_DUMP(WASMThreadArg);
 
     //WASMExecEnv *new_exec_env;
     DUMP_PTR(node->new_exec_env);
@@ -232,13 +258,13 @@ dump_WASMThreadArg(Pool_Info *addr)
 void
 dump_ExternRefMapNode(Pool_Info *addr)
 {
-    // skip
+    printf("unsupported:%d\n", addr->type);
 }
 
 void
 dump_fd_table(Pool_Info *addr)
 {
-    // skip
+    printf("unsupported:%d\n", addr->type);
     //struct rwlock lock;==pthread_rwlock_t object;
     //struct fd_entry *entries;
     //size_t size;
@@ -247,7 +273,7 @@ dump_fd_table(Pool_Info *addr)
 void
 dump_fd_prestats(Pool_Info *addr)
 {
-    // skip
+    printf("unsupported:%d\n", addr->type);
     //struct rwlock lock;==pthread_rwlock_t object;
     //struct fd_prestat *prestats;
     //size_t size;
@@ -256,6 +282,7 @@ dump_fd_prestats(Pool_Info *addr)
 void
 dump_argv_environ_values(Pool_Info *addr)
 {
+    printf("unsupported:%d\n", addr->type);
     //const char *argv_buf;
     //size_t argv_buf_size;
     //char **argv_list;
@@ -269,18 +296,18 @@ dump_argv_environ_values(Pool_Info *addr)
 void
 dump_uvwasi_t(Pool_Info *addr)
 {
-    // skip
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_uvwasi_preopen_t(Pool_Info *addr)
 {
-    // skip
+    printf("unsupported:%d\n", addr->type);
 }
 
 void
 dump_wasm_val_t(Pool_Info *addr)
 {
-    HEADER(wasm_val_t)
+    HEADER_DUMP(wasm_val_t)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -318,143 +345,143 @@ dump_wasm_val_t(Pool_Info *addr)
 void
 dump_wasm_instance_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_engine_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_store_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_Vector(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_valtype_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_functype_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_valtype_vec_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_globaltype_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_tabletype_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_memorytype_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_importtype_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_byte_vec_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_exporttype_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_ref_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_frame_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_trap_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_foreign_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_module_ex_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_func_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_global_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_table_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_memory_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 
 void
 dump_wasm_store_vec_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_module_vec_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_instance_vec_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasm_extern_vec_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_WASMRegisteredModule(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_LoadingModule(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 /* 
     *end wasm-c-api
@@ -469,7 +496,7 @@ void
 dump_WASMExecEnv(Pool_Info *addr)
 {
     int i, j, k;
-    HEADER_BUF(WASMExecEnv);
+    HEADER_DUMP_BUF(WASMExecEnv);
 
     //struct WASMExecEnv *next;
     DUMP_PTR(node->next);
@@ -481,7 +508,7 @@ dump_WASMExecEnv(Pool_Info *addr)
     DUMP_PTR(node->module_inst);
 
     //uint8 *native_stack_boundary;
-    DUMP_PTR(node->native_stack_boundary);
+    //DUMP_PTR(node->native_stack_boundary);
 
     /*
     union {
@@ -494,7 +521,6 @@ dump_WASMExecEnv(Pool_Info *addr)
         uint32 boundary;
         uintptr_t __padding__;
     } aux_stack_boundary;*/
-
     /*
     union {
         uint32 bottom;
@@ -508,7 +534,7 @@ dump_WASMExecEnv(Pool_Info *addr)
     //DUMP_PTR(node->user_data);
 
     //struct WASMInterpFrame *cur_frame;
-    DUMP_PTR(node->cur_frame);
+    //DUMP_PTR(node->cur_frame);
 
     //korp_tid handle;
 
@@ -528,9 +554,10 @@ dump_WASMExecEnv(Pool_Info *addr)
                 if (start_addr == NULL && else_addr == NULL
                     && end_addr == NULL) {
                     ip = 0;
-                    fwrite(&ip, sizeof(uint32), 1, fp);
-                    fwrite(&ip, sizeof(uint32), 1, fp);
-                    fwrite(&ip, sizeof(uint32), 1, fp);
+                    DUMP_PTR(NULL);
+                    //fwrite(&ip, sizeof(uint32), 1, fp);
+                    //fwrite(&ip, sizeof(uint32), 1, fp);
+                    //fwrite(&ip, sizeof(uint32), 1, fp);
                     break;
                 }
                 if (CHECK_IP(start_addr) && CHECK_IP(else_addr)
@@ -578,15 +605,17 @@ dump_WASMExecEnv(Pool_Info *addr)
             uint8 bottom[1];
         } s;
     } wasm_stack;*/
-    DUMP_PTR(node->wasm_stack.s.top_boundary);
-    DUMP_PTR(node->wasm_stack.s.top);
+    //DUMP_PTR(node->wasm_stack.s.top_boundary);
+    //DUMP_PTR(node->wasm_stack.s.top);
     //fwrite(node->wasm_stack.s.bottom, sizeof(uint8), addr->size, fp);
 }
 
 void
 dump_NativeSymbolsNode(Pool_Info *addr)
 {
-    HEADER(NativeSymbolsNode)
+    printf("skip NativeSymbolsNode\n");
+    return;
+    HEADER_DUMP(NativeSymbolsNode)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -605,7 +634,7 @@ dump_NativeSymbolsNode(Pool_Info *addr)
 void
 dump_WASMModuleCommon(Pool_Info *addr)
 {
-    HEADER_BUF(WASMModuleCommon);
+    HEADER_DUMP_BUF(WASMModuleCommon);
 
     //uint32 module_type;
     fwrite(&node->module_type, sizeof(uint32), 1, fp);
@@ -615,9 +644,9 @@ dump_WASMModuleCommon(Pool_Info *addr)
 void
 dump_WASMModuleInstanceCommon(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
     exit(1);
-    HEADER_BUF(WASMModuleInstanceCommon);
+    HEADER_DUMP_BUF(WASMModuleInstanceCommon);
 
     //uint32 module_type;
     fwrite(&node->module_type, sizeof(uint32), 1, fp);
@@ -628,7 +657,7 @@ dump_WASMModuleInstanceCommon(Pool_Info *addr)
 void
 dump_WASMModuleMemConsumption(Pool_Info *addr)
 {
-    HEADER(WASMModuleMemConsumption)
+    HEADER_DUMP(WASMModuleMemConsumption)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -666,7 +695,7 @@ dump_WASMModuleMemConsumption(Pool_Info *addr)
 void
 dump_WASMModuleInstMemConsumption(Pool_Info *addr)
 {
-    HEADER(WASMModuleInstMemConsumption)
+    HEADER_DUMP(WASMModuleInstMemConsumption)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -691,7 +720,7 @@ dump_WASMModuleInstMemConsumption(Pool_Info *addr)
 void
 dump_WASMMemoryInstanceCommon(Pool_Info *addr)
 {
-    HEADER_BUF(WASMMemoryInstanceCommon);
+    HEADER_DUMP_BUF(WASMMemoryInstanceCommon);
 
     //uint32 module_type;
     fwrite(&node->module_type, sizeof(uint32), 1, fp);
@@ -701,7 +730,7 @@ dump_WASMMemoryInstanceCommon(Pool_Info *addr)
 void
 dump_WASMSection(Pool_Info *addr) //==wasm_section_t
 {
-    HEADER(WASMSection)
+    HEADER_DUMP(WASMSection)
     {
         printf("WASMSection\n");
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
@@ -719,7 +748,9 @@ dump_WASMSection(Pool_Info *addr) //==wasm_section_t
 void
 dump_WASMCApiFrame(Pool_Info *addr) //==wasm_frame_t
 {
-    HEADER(WASMCApiFrame)
+    printf("unsupported type:%d\n", addr->type);
+    exit(1);
+    HEADER_DUMP(WASMCApiFrame)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -737,13 +768,13 @@ dump_WASMCApiFrame(Pool_Info *addr) //==wasm_frame_t
 void
 dump_WASMSharedMemNode(Pool_Info *addr)
 {
-    //skip
+    printf("unsupported:%d\n", addr->type);
 }
 
 void
 dump_WASMModule(Pool_Info *addr) // 要チェック
 {
-    HEADER(WASMModule)
+    HEADER_DUMP(WASMModule)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -835,12 +866,12 @@ dump_WASMModule(Pool_Info *addr) // 要チェック
         //bool possible_memory_grow;
         fwrite(&node->possible_memory_grow, sizeof(bool), 1, fp);
 
-        StringList const_str_list;
+        //StringList const_str_list;
         DUMP_PTR(node->const_str_list);
 
 #if WASM_ENABLE_LIBC_WASI != 0
-        WASIArguments wasi_args;
-        {
+        //WASIArguments wasi_args;
+        /*{
             // const char **dir_list;
             DUMP_PTR(node->wasi_args.dir_list);
             // uint32 dir_count;
@@ -859,8 +890,8 @@ dump_WASMModule(Pool_Info *addr) // 要チェック
             fwrite(&node->wasi_args.argc, sizeof(uint32), 1, fp);
             // int stdio[3];
             fwrite(node->wasi_args.stdio, sizeof(int), 3, fp);
-        }
-        bool is_wasi_module;
+        }*/
+        // bool is_wasi_module;
         fwrite(&node->is_wasi_module, sizeof(bool), 1, fp);
 #endif
     }
@@ -869,7 +900,7 @@ dump_WASMModule(Pool_Info *addr) // 要チェック
 void
 dump_WASMFunction(Pool_Info *addr) //要チェック
 {
-    HEADER_BUF(WASMFunction);
+    HEADER_DUMP_BUF(WASMFunction);
 
 #if WASM_ENABLE_CUSTOM_NAME_SECTION != 0
     char *field_name;
@@ -879,7 +910,7 @@ dump_WASMFunction(Pool_Info *addr) //要チェック
     // uint32 local_count;
     fwrite(&node->local_count, sizeof(uint32), 1, fp);
     // uint8 *local_types;
-    DUMP_PTR(node->local_types);
+    //DUMP_PTR(node->local_types);
 
     // uint16 param_cell_num;
     fwrite(&node->param_cell_num, sizeof(uint16), 1, fp);
@@ -914,20 +945,18 @@ dump_WASMFunctionT(Pool_Info *addr)
     int i;
     int _type = WASMFunctionTT;
     fwrite(&_type, sizeof(int), 1, fp);
-    fwrite(&addr->size, sizeof(uint64), 1, fp);
+    fwrite(&addr->size, sizeof(int), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
-    WASMFunction **raw = addr->p_raw;
     for (i = 0; i < addr->size; i++) {
-        DUMP_PTR(raw);
-        raw++;
+        DUMP_PTR(((WASMFunction **)addr->p_raw)[i]);
     }
 }
 
 void
 dump_WASMGlobal(Pool_Info *addr)
 {
-    HEADER(WASMGlobal)
+    HEADER_DUMP(WASMGlobal)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -1000,7 +1029,7 @@ void
 dump_WASMExport(Pool_Info *addr)
 {
     StringNode *str_node;
-    HEADER(WASMExport)
+    HEADER_DUMP(WASMExport)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -1023,7 +1052,7 @@ dump_WASMExport(Pool_Info *addr)
 void
 dump_V128(Pool_Info *addr)
 {
-    HEADER(V128)
+    HEADER_DUMP(V128)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -1034,7 +1063,7 @@ dump_V128(Pool_Info *addr)
 void
 dump_WASMValue(Pool_Info *addr)
 {
-    HEADER(WASMValue)
+    HEADER_DUMP(WASMValue)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
         fwrite(&node->v128.f32x4, sizeof(float64), 2, fp);
@@ -1043,7 +1072,7 @@ dump_WASMValue(Pool_Info *addr)
 void
 dump_InitializerExpression(Pool_Info *addr)
 {
-    HEADER(InitializerExpression)
+    HEADER_DUMP(InitializerExpression)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -1103,7 +1132,7 @@ dump_InitializerExpression(Pool_Info *addr)
 void
 dump_WASMType(Pool_Info *addr)
 {
-    HEADER_BUF(WASMType);
+    HEADER_DUMP_BUF(WASMType);
 
     // uint16 param_count;
     fwrite(&node->param_count, sizeof(uint16), 1, fp);
@@ -1124,20 +1153,18 @@ dump_WASMTypeT(Pool_Info *addr)
     int i;
     int _type = WASMTypeTT;
     fwrite(&_type, sizeof(int), 1, fp);
-    fwrite(&addr->size, sizeof(uint64), 1, fp);
+    fwrite(&addr->size, sizeof(int), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
-    WASMType **raw = addr->p_raw;
     for (i = 0; i < addr->size; i++) {
-        DUMP_PTR(raw);
-        raw++;
+        DUMP_PTR(((WASMType **)addr->p_raw)[i]);
     }
 }
 
 void
 dump_WASMTable(Pool_Info *addr)
 {
-    HEADER(WASMTable)
+    HEADER_DUMP(WASMTable)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -1156,7 +1183,7 @@ dump_WASMTable(Pool_Info *addr)
 void
 dump_WASMMemory(Pool_Info *addr)
 {
-    HEADER(WASMMemory)
+    HEADER_DUMP(WASMMemory)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -1201,7 +1228,7 @@ void
 dump_WASMImport(Pool_Info *addr)
 {
     StringNode *str_node;
-    HEADER(WASMImport)
+    HEADER_DUMP(WASMImport)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -1212,12 +1239,14 @@ dump_WASMImport(Pool_Info *addr)
              str_node = str_node->next) {
             if (str_node->str == node->u.names.module_name) {
                 DUMP_PTR(str_node);
+                break;
             }
         }
         for (str_node = wasm_module->const_str_list; str_node != NULL;
              str_node = str_node->next) {
             if (str_node->str == node->u.names.field_name) {
                 DUMP_PTR(str_node);
+                break;
             }
         }
         /*union {
@@ -1238,10 +1267,10 @@ dump_WASMImport(Pool_Info *addr)
                 /* restore時に再設定 */
 
                 // const char *signature;
-                DUMP_PTR(node->u.function.signature); // maybe ok
+                //DUMP_PTR(node->u.function.signature); // maybe ok
 
                 // void *attachment;
-                DUMP_PTR(node->u.function.attachment); // 要チェック
+                //DUMP_PTR(node->u.function.attachment); // 要チェック
                 // bool call_conv_raw;
                 fwrite(&node->u.function.call_conv_raw, sizeof(bool), 1, fp);
 
@@ -1299,7 +1328,7 @@ dump_WASMImport(Pool_Info *addr)
 void
 dump_WASMTableSeg(Pool_Info *addr)
 {
-    HEADER(WASMTableSeg)
+    HEADER_DUMP(WASMTableSeg)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -1381,7 +1410,7 @@ dump_WASMTableSeg(Pool_Info *addr)
 void
 dump_WASMDataSeg(Pool_Info *addr)
 {
-    HEADER(WASMDataSeg)
+    HEADER_DUMP(WASMDataSeg)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -1462,13 +1491,11 @@ dump_WASMDataSegT(Pool_Info *addr)
     int i;
     int _type = WASMDataSegTT;
     fwrite(&_type, sizeof(int), 1, fp);
-    fwrite(&addr->size, sizeof(uint64), 1, fp);
+    fwrite(&addr->size, sizeof(int), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
-    WASMDataSeg **raw = addr->p_raw;
     for (i = 0; i < addr->size; i++) {
-        DUMP_PTR(raw);
-        raw++;
+        DUMP_PTR(((WASMDataSeg **)addr->p_raw)[i]);
     }
 }
 void
@@ -1495,7 +1522,7 @@ dump_WASIArguments(Pool_Info *addr)
 void
 dump_StringNode(Pool_Info *addr)
 {
-    HEADER_BUF(StringNode);
+    HEADER_DUMP_BUF(StringNode);
 
     //size
     fwrite(&addr->size, sizeof(int), 1, fp);
@@ -1516,7 +1543,7 @@ dump_WASMBranchBlock(
 {
     printf("WASMBranchBlock\n");
     exit(1);
-    HEADER(WASMBranchBlock)
+    HEADER_DUMP(WASMBranchBlock)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -1534,27 +1561,26 @@ dump_WASMBranchBlock(
 void
 dump_BranchBlockPatch(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 
 void
 dump_WASMInterpFrame(Pool_Info *addr)
 {
-    HEADER_BUF(WASMInterpFrame);
+    HEADER_DUMP_FRAME_BUF(WASMInterpFrame);
 
     //struct WASMInterpFrame *prev_frame;
-    DUMP_PTR(node->prev_frame);
+    //DUMP_FRAME_PTR(node->prev_frame);
 
     //struct WASMFunctionInstance *function;
-    DUMP_PTR(node->function);
+    DUMP_FRAME_PTR(node->function);
 
     //uint8 *ip;
-
     if (node->function != NULL) {
         uint8 *code = wasm_get_func_code(node->function);
-        DUMP_PTR(code); // codeバッファの抽象アドレス
+        //DUMP_FRAME_PTR(code); // codeバッファの抽象アドレス
         uint64 ip = node->ip - code;
-        fwrite(&ip, sizeof(uint64), 1, fp);
+        fwrite(&ip, sizeof(uint64), 1, gp);
     }
     else {
         return;
@@ -1571,28 +1597,28 @@ dump_WASMInterpFrame(Pool_Info *addr)
     // DUMP_PTR(node->sp_boundary);
     // uint32 *sp;
     //DUMP_PTR(node->sp);
-    uint64 sp = node->sp - node->sp_bottom;
-    fwrite(&sp, sizeof(uint64), 1, fp);
+    uint64 sp = (uint8 *)node->sp - (uint8 *)node->sp_bottom;
+    fwrite(&sp, sizeof(uint64), 1, gp);
 
     WASMBranchBlock *bb = node->csp_bottom;
     uint32 bb_num = node->function->u.func->max_block_num;
-    fwrite(&bb_num, sizeof(uint32), 1, fp);
+    fwrite(&bb_num, sizeof(uint32), 1, gp);
 
     for (int i = 0; i < bb_num; i++, bb++) {
         // uint8 *begin_addr; frame_ip
         uint64 ip = bb->begin_addr - wasm_get_func_code(node->function);
-        fwrite(&ip, sizeof(uint64), 1, fp);
+        fwrite(&ip, sizeof(uint64), 1, gp);
 
         // uint8 *target_addr; frame_ip
         ip = bb->target_addr - wasm_get_func_code(node->function);
-        fwrite(&ip, sizeof(uint64), 1, fp);
+        fwrite(&ip, sizeof(uint64), 1, gp);
 
         // uint32 *frame_sp;
         sp = bb->frame_sp - node->sp_bottom;
-        fwrite(&sp, sizeof(uint64), 1, fp);
+        fwrite(&sp, sizeof(uint64), 1, gp);
 
         // uint32 cell_num;
-        fwrite(&bb->cell_num, sizeof(uint32), 1, fp);
+        fwrite(&bb->cell_num, sizeof(uint32), 1, gp);
     }
 
     /* Frame data, the layout is:
@@ -1605,6 +1631,12 @@ dump_WASMInterpFrame(Pool_Info *addr)
     /*fwrite(node->lp, sizeof(uint32),
            addr->size - (uint32)offsetof(WASMInterpFrame, lp), fp);*/
 
+    fwrite(node->lp, sizeof(uint32), node->function->param_cell_num, gp);
+    fwrite(node->lp + node->function->param_cell_num, sizeof(uint32),
+           node->function->local_cell_num, gp);
+    fwrite(node->sp_bottom, sizeof(uint32),
+           node->function->u.func->max_stack_cell_num, gp);
+
 #endif
 }
 
@@ -1613,7 +1645,7 @@ dump_BranchBlock(Pool_Info *addr)
 {
     printf("BranchBlock\n");
     exit(1);
-    //HEADER(BranchBlock);
+    //HEADER_DUMP(BranchBlock);
 
     uint8 label_type;
     BlockType block_type;
@@ -1647,7 +1679,7 @@ dump_WASMLoaderContext(Pool_Info *addr)
 void
 dump_Const(Pool_Info *addr)
 {
-    HEADER(Const)
+    HEADER_DUMP(Const)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -1663,7 +1695,7 @@ dump_Const(Pool_Info *addr)
 void
 dump_WASMModuleInstance(Pool_Info *addr)
 {
-    HEADER(WASMModuleInstance)
+    HEADER_DUMP(WASMModuleInstance)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -1715,7 +1747,7 @@ dump_WASMModuleInstance(Pool_Info *addr)
 
 #if WASM_ENABLE_LIBC_WASI != 0
         //WASIContext *wasi_ctx;
-        DUMP_PTR(node->wasi_ctx);
+        //DUMP_PTR(node->wasi_ctx);
 #endif
 
         // WASMExecEnv *exec_env_singleton;
@@ -1743,7 +1775,7 @@ dump_WASMModuleInstance(Pool_Info *addr)
 void
 dump_WASMFunctionInstance(Pool_Info *addr)
 {
-    HEADER(WASMFunctionInstance)
+    HEADER_DUMP(WASMFunctionInstance)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
         // bool is_import_func;
@@ -1762,24 +1794,40 @@ dump_WASMFunctionInstance(Pool_Info *addr)
         /* cell num of consts */
         uint16 const_cell_num;
 #endif
-        // uint16 *local_offsets;
-        DUMP_PTR(node->local_offsets);
-        // uint8 *param_types;
-        DUMP_PTR(node->param_types);
-        // uint8 *local_types;
-        DUMP_PTR(node->local_types);
+
         /*union {
             WASMFunctionImport *func_import;
             WASMFunction *func;
         } u;*/
-        DUMP_PTR(node->u.func);
+        if (node->is_import_func) {
+            WASMImport *import;
+            // WASMFunctionImport *func_import;
+            for (import = wasm_module->import_functions; import != NULL;
+                 import++) {
+                if (&import->u.function == node->u.func_import) {
+                    DUMP_PTR(import);
+                    break;
+                }
+            }
+            // uint8 *param_types; == type->types
+            DUMP_PTR(node->u.func_import->func_type);
+        }
+        else {
+            DUMP_PTR(node->u.func);
+
+            // uint16 *local_offsets;
+            DUMP_PTR(node->local_offsets);
+            // uint8 *param_types; == (uint8*)type->types
+            DUMP_PTR(node->u.func->func_type);
+            // uint8 *local_types; == (uint8*)func + sizeof(WASMFunction)
+        }
     }
 }
 
 void
 dump_WASMMemoryInstance(Pool_Info *addr)
 {
-    HEADER(WASMMemoryInstance)
+    HEADER_DUMP(WASMMemoryInstance)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -1795,14 +1843,13 @@ dump_WASMMemoryInstance(Pool_Info *addr)
         fwrite(&node->max_page_count, sizeof(uint32), 1, fp);
 
         // uint8 *heap_data;
-        DUMP_PTR(node->heap_data);
+        //DUMP_PTR(node->heap_data);
         // uint8 *heap_data_end;
-        DUMP_PTR(node->heap_data_end);
+        //DUMP_PTR(node->heap_data_end);
         // void *heap_handle;
-        DUMP_PTR(node->heap_handle);
+        //DUMP_PTR(node->heap_handle);
 
         //uint8 *memory_data_end;
-        DUMP_PTR(node->memory_data_end);
 
         /* Memory data begin address, the layout is: memory data + heap data
        Note: when memory is re-allocated, the heap data and memory data
@@ -1817,19 +1864,17 @@ dump_WASMMemoryInstanceT(Pool_Info *addr)
     int i;
     int _type = WASMMemoryInstanceTT;
     fwrite(&_type, sizeof(int), 1, fp);
-    fwrite(&addr->size, sizeof(uint64), 1, fp);
+    fwrite(&addr->size, sizeof(int), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
-    WASMMemoryInstance **raw = addr->p_raw;
     for (i = 0; i < addr->size; i++) {
-        DUMP_PTR(raw);
-        raw++;
+        DUMP_PTR(((WASMMemoryInstance **)addr->p_raw)[i]);
     }
 }
 void
 dump_WASMTableInstance(Pool_Info *addr)
 {
-    HEADER_BUF(WASMTableInstance);
+    HEADER_DUMP_BUF(WASMTableInstance);
 
     // uint8 elem_type;
     fwrite(&node->elem_type, sizeof(uint8), 1, fp);
@@ -1847,20 +1892,18 @@ dump_WASMTableInstanceT(Pool_Info *addr)
     int i;
     int _type = WASMTableInstanceTT;
     fwrite(&_type, sizeof(int), 1, fp);
-    fwrite(&addr->size, sizeof(uint64), 1, fp);
+    fwrite(&addr->size, sizeof(int), 1, fp);
     fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
-    WASMTableInstance **raw = addr->p_raw;
     for (i = 0; i < addr->size; i++) {
-        DUMP_PTR(raw);
-        raw++;
+        DUMP_PTR(((WASMTableInstance **)addr->p_raw)[i]);
     }
 }
 
 void
 dump_WASMGlobalInstance(Pool_Info *addr)
 {
-    HEADER(WASMGlobalInstance)
+    HEADER_DUMP(WASMGlobalInstance)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -1925,7 +1968,7 @@ void
 dump_WASMExportFuncInstance(Pool_Info *addr)
 {
     StringNode *str_node;
-    HEADER(WASMExportFuncInstance)
+    HEADER_DUMP(WASMExportFuncInstance)
     {
         fwrite(&addr->p_abs, sizeof(int), 1, fp);
 
@@ -1944,93 +1987,93 @@ dump_WASMExportFuncInstance(Pool_Info *addr)
 void
 dump_WASMExportGlobInstance(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_WASMSubModInstNode(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 
 void
 dump_WASMRuntimeFrame(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 
 void
 dump_WASMOpcode(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
     // enum
 }
 void
 dump_WASMMiscEXTOpcode(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
     // enum
 }
 void
 dump_WASMSimdEXTOpcode(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
     // enum
 }
 void
 dump_WASMAtomicEXTOpcode(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
     // enum
 }
 
 void
 dump_HashMapElem(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_HashMap(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_timer_ctx_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_app_timer_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_bh_queue(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_bh_queue_node(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_AtomicWaitInfo(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_AtomicWaitNode(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 
 void
 dump_wasi_iovec_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }
 void
 dump_wasi_ciovec_t(Pool_Info *addr)
 {
-    printf("unsupported\n");
+    printf("unsupported:%d\n", addr->type);
 }

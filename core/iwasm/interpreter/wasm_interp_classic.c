@@ -728,11 +728,32 @@ word_copy(uint32 *dest, uint32 *src, unsigned num)
         *dest++ = *src++;
 }
 
+WASMInterpFrame *
+wasm_interp_alloc_frame(WASMExecEnv *exec_env,
+                 uint32 size,
+                 WASMInterpFrame *prev_frame)
+{
+    WASMInterpFrame *frame = wasm_exec_env_alloc_wasm_frame(exec_env, size);
+
+    if (frame) {
+        frame->prev_frame = prev_frame;
+#if WASM_ENABLE_PERF_PROFILING != 0
+        frame->time_started = os_time_get_boot_microsecond();
+#endif
+    }
+    else {
+        wasm_set_exception((WASMModuleInstance *)exec_env->module_inst,
+                           "wasm operand stack overflow");
+    }
+
+    return frame;
+}
+
 static inline WASMInterpFrame *
 ALLOC_FRAME(WASMExecEnv *exec_env, uint32 size, WASMInterpFrame *prev_frame)
 {
     WASMInterpFrame *frame = wasm_exec_env_alloc_wasm_frame(exec_env, size);
-
+    
     if (frame) {
         frame->prev_frame = prev_frame;
         alloc_info_ex(frame, WASMInterpFrameT, size);

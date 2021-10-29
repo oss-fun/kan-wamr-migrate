@@ -164,6 +164,9 @@ typedef struct wasm_val_t {
 } wasm_val_t;
 #endif
 
+WASM_RUNTIME_API_EXTERN void
+restore_runtime(void);
+
 /**
  * Initialize the WASM runtime environment, and also initialize
  * the memory allocator with system allocator, which calls os_malloc

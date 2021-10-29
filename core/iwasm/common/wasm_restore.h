@@ -2,7 +2,14 @@
 #define _WASM_RESTORE_H
 
 void
-init_restore(void *addr);
+init_restore(void);
+
+void
+restore_internal(void);
+
+void
+restore_frame_internal(void);
+
 void
 restore_char(Pool_Info *addr);
 void
