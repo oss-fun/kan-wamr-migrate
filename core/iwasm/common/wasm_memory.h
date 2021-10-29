@@ -164,6 +164,12 @@ typedef struct Pool_Info {
     struct Pool_Info *next;
 } Pool_Info;
 
+void *
+get_base_addr(void);
+
+Pool_Info *
+get_raw(void *addr);
+
 Pool_Info *
 get_info(int p_abs);
 

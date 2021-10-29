@@ -1586,11 +1586,7 @@ dump_WASMInterpFrame(Pool_Info *addr)
         uint8 *code = wasm_get_func_code(node->function);
         //DUMP_FRAME_PTR(code); // codeバッファの抽象アドレス
         uint64 ip = node->ip - code;
-        printf("cur:%d\n",node==_exec_env->cur_frame ? 1:0);
-        printf("ip:\t%p\n", node->ip);
-        printf("code:\t%p\n", code);
         fwrite(&ip, sizeof(uint64), 1, gp);
-        //exit(1);
     }
     else {
         return;
@@ -1608,12 +1604,6 @@ dump_WASMInterpFrame(Pool_Info *addr)
     // uint32 *sp;
     //DUMP_PTR(node->sp);
     uint64 sp = (uint8 *)node->sp - (uint8 *)node->sp_bottom;
-    printf("sp:\t\t%p\n", node->sp);
-    printf("sp_bottom:\t%p\n", node->sp_bottom);
-    //printf("sp-bottom:\t%p\n", node->sp - node->sp_bottom);
-    printf("sp-bottom:\t%p\n\n", (uint8 *)node->sp - (uint8 *)node->sp_bottom);
-    //exit(1);
-
     fwrite(&sp, sizeof(uint64), 1, gp);
 
     WASMBranchBlock *bb = node->csp_bottom;

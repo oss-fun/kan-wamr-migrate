@@ -81,6 +81,9 @@ wasm_interp_call_wasm(struct WASMModuleInstance *module_inst,
                       uint32 argc,
                       uint32 argv[]);
 
+bool
+wasm_interp_restore(uint32 argc, uint32 argv[]);
+
 WASMInterpFrame *
 wasm_interp_alloc_frame(WASMExecEnv *exec_env,
                         uint32 size,

@@ -185,6 +185,32 @@ init_dump_func(void)
         }                                                                     \
         break;
 
+void *
+get_base_addr(void){
+    return pool_allocator;
+}
+
+Pool_Info *
+get_raw(void *addr)
+{
+    Pool_Info *info = root_info, *p;
+    if (addr == NULL) {
+        return NULL;
+    }
+    while (info) {
+        for (p = info; p != NULL; p = p->list) {
+            if (p->p_raw == addr) {
+                return p;
+            }
+        }
+        info = info->next;
+    }
+    printf("error p_abs:%p\n", addr);
+    exit(1);
+
+    return NULL;
+}
+
 Pool_Info *
 get_info(int p_abs)
 {
@@ -641,6 +667,30 @@ free_info(void *addr)
         info = info->next;
     }
 
+    info = root_frame;
+    prev = NULL;
+    while (info) {
+        if (info->p_raw == addr) {
+            while (info->list) {
+                p = info->list->list;
+                free(info->list);
+                info->list = p;
+            }
+
+            if (prev == NULL) {
+                root_frame = info->next;
+            }
+            else {
+                prev->next = info->next;
+            }
+            //printf("free:%d\n",info->type);
+            free(info);
+            return;
+        }
+        prev = info;
+        info = info->next;
+    }
+    
     printf("free error[%p]\n", addr);
 
     info = root_info;

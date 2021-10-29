@@ -11,6 +11,7 @@
 #include "wasm_loader.h"
 #include "../common/wasm_memory.h"
 #include "../common/wasm_exec_env.h"
+#include "../common/wasm_dump.h"
 #if WASM_ENABLE_SHARED_MEMORY != 0
 #include "../common/wasm_shared_memory.h"
 #endif
@@ -864,7 +865,8 @@ static void
 wasm_interp_call_func_bytecode(WASMModuleInstance *module,
                                WASMExecEnv *exec_env,
                                WASMFunctionInstance *cur_func,
-                               WASMInterpFrame *prev_frame);
+                               WASMInterpFrame *prev_frame,
+                               bool migr_flag);
 
 static void
 wasm_interp_call_func_import(WASMModuleInstance *module_inst,
@@ -896,7 +898,7 @@ wasm_interp_call_func_import(WASMModuleInstance *module_inst,
 
     /* call function of sub-module*/
     wasm_interp_call_func_bytecode(sub_module_inst, exec_env, sub_func_inst,
-                                   prev_frame);
+                                   prev_frame, false);
 
     /* restore ip and module_inst */
     prev_frame->ip = ip;
@@ -939,18 +941,75 @@ wasm_interp_call_func_import(WASMModuleInstance *module_inst,
 #endif /* end of WASM_ENABLE_LABELS_AS_VALUES */
 
 static bool sig_flag = false;
+static void *base_addr;
+
+static WASMModuleInstance *_module_inst;
+static WASMExecEnv *_exec_env;
+static WASMFunctionInstance *_function;
+static WASMInterpFrame *_frame;
+
 void
 wasm_interp_signal(int signum)
 {
     sig_flag = true;
 }
 
+#define DUMP_PTR(attr)                                                        \
+    do {                                                                      \
+        if (attr == NULL) {                                                   \
+            int _n = -1;                                                      \
+            fwrite(&_n, sizeof(int), 1, fp);                                  \
+        }                                                                     \
+        else {                                                                \
+            unsigned long _p = (unsigned long)attr;                           \
+            _p -= (unsigned long)base_addr;                                   \
+            fwrite(&_p, sizeof(int), 1, fp);                                  \
+        }                                                                     \
+    } while (0)
+
+#define DUMP_VAR(var) fwrite(&var, sizeof(var), 1, fp)
+
+#define RESTORE_VAR(var) fread(&var, sizeof(var), 1, fp)
+
+#define RESTORE_PTR(attr)                                                     \
+    do {                                                                      \
+        Pool_Info *_info;                                                     \
+        int _p_abs;                                                           \
+        fread(&_p_abs, sizeof(int), 1, fp);                                   \
+        if (_p_abs == -1) {                                                   \
+            attr = NULL;                                                      \
+        }                                                                     \
+        else {                                                                \
+            _info = get_info(_p_abs);                                         \
+            attr = _info->p_raw;                                              \
+        }                                                                     \
+    } while (0)
+
+#define RESTORE_FRAME_PTR(attr)                                               \
+    do {                                                                      \
+        Pool_Info *_info;                                                     \
+        int _p_abs;                                                           \
+        fread(&_p_abs, sizeof(int), 1, fp);                                   \
+        if (_p_abs == -1) {                                                   \
+            attr = NULL;                                                      \
+        }                                                                     \
+        else {                                                                \
+            _info = get_frame_info(_p_abs);                                   \
+            attr = _info->p_raw;                                              \
+        }                                                                     \
+    } while (0)
+
 static void
 wasm_interp_call_func_bytecode(WASMModuleInstance *module,
                                WASMExecEnv *exec_env,
                                WASMFunctionInstance *cur_func,
-                               WASMInterpFrame *prev_frame)
+                               WASMInterpFrame *prev_frame,
+                               bool migr_flag)
 {
+    if (migr_flag) {
+        goto MIGRATION;
+    }
+
     WASMMemoryInstance *memory = module->default_memory;
     uint32 num_bytes_per_page = memory ? memory->num_bytes_per_page : 0;
     uint8 *global_data = module->global_data;
@@ -977,6 +1036,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
     uint32 cache_index, type_index, cell_num;
     uint8 value_type;
     uint64 migr_count = 0;
+    bool migr_flag2 = false;
 
     signal(SIGINT, &wasm_interp_signal);
 
@@ -986,46 +1046,272 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
 #undef HANDLE_OPCODE
 #endif
 
+MIGRATION:
+    if (migr_flag) {
+        migr_flag2 = true;
+        printf("restore\n");
+        restore_runtime();
+        base_addr = get_base_addr();
+        FILE *fp;
+
+        if ((fp = fopen("interp.img", "rb")) == NULL) {
+            printf("file open error\n");
+            return;
+        }
+
+        // WASMModuleInstance *module;
+        RESTORE_PTR(module);
+        // WASMExecEnv *exec_env;
+        RESTORE_PTR(exec_env);
+        // WASMFunctionInstance *cur_func;
+        RESTORE_PTR(cur_func);
+        // WASMInterpFrame *prev_frame;
+        RESTORE_FRAME_PTR(prev_frame);
+
+        // WASMMemoryInstance *memory = module->default_memory;
+        RESTORE_PTR(memory);
+
+        // uint32 num_bytes_per_page = memory ? memory->num_bytes_per_page : 0;
+        RESTORE_VAR(num_bytes_per_page);
+        // uint8 *global_data = module->global_data;
+        RESTORE_PTR(global_data);
+        // uint32 linear_mem_size = memory ? num_bytes_per_page * memory->cur_page_count : 0;
+        RESTORE_VAR(linear_mem_size);
+        // WASMType **wasm_types = module->module->types;
+        RESTORE_PTR(wasm_types);
+        // WASMGlobalInstance *globals = module->globals, *global;
+        RESTORE_PTR(globals);
+        RESTORE_PTR(global);
+        // uint8 opcode_IMPDEP = WASM_OP_IMPDEP;
+        RESTORE_VAR(opcode_IMPDEP);
+        // WASMInterpFrame *frame = NULL;
+        RESTORE_FRAME_PTR(frame);
+
+        // register uint8 *frame_ip = &opcode_IMPDEP;
+        // register uint32 *frame_lp = NULL;
+        // register uint32 *frame_sp = NULL;
+        do {
+            uint64 _addr;
+            //_addr=frame_ip - wasm_get_func_code(cur_func);
+            RESTORE_VAR(_addr);
+            frame_ip = _addr + wasm_get_func_code(cur_func);
+
+            // frame_lp == cur_frame->lp
+            frame_lp = frame->lp;
+
+            //_addr = frame_sp - frame->sp_bottom;
+            RESTORE_VAR(_addr);
+            frame_sp = _addr + frame->sp_bottom;
+        } while (0);
+
+        // WASMBranchBlock *frame_csp = NULL;
+        do {
+            uint64 _num;
+            // _num = frame_csp - frame->csp_bottom;
+            RESTORE_VAR(_num);
+            frame_csp = _num + frame->csp_bottom;
+        } while (0);
+
+        // BlockAddr *cache_items;
+
+        // uint8 *frame_ip_end = frame_ip + 1; frame_ip_end = wasm_get_func_code_end(cur_func)
+        frame_ip_end = wasm_get_func_code_end(cur_func);
+
+        // uint8 opcode;
+        RESTORE_VAR(opcode);
+        // uint32 i, depth, cond, count, fidx, tidx, lidx, frame_size = 0;
+        RESTORE_VAR(i);
+        RESTORE_VAR(depth);
+        RESTORE_VAR(cond);
+        RESTORE_VAR(count);
+        RESTORE_VAR(fidx);
+        RESTORE_VAR(tidx);
+        RESTORE_VAR(lidx);
+        RESTORE_VAR(frame_size);
+
+        // uint64 all_cell_num = 0;
+        RESTORE_VAR(all_cell_num);
+        // int32 val;
+        RESTORE_VAR(val);
+        // uint8 *else_addr, *end_addr, *maddr = NULL;
+        do {
+            uint64 _addr;
+            // _addr = else_addr - wasm_get_func_code(cur_func);
+            RESTORE_VAR(_addr);
+            else_addr = _addr + wasm_get_func_code(cur_func);
+            // _addr = end_addr - wasm_get_func_code(cur_func);
+            RESTORE_VAR(_addr);
+            end_addr = _addr + wasm_get_func_code(cur_func);
+            // _addr = maddr - memory->memory_data;
+            RESTORE_VAR(maddr);
+            maddr = _addr + memory->memory_data;
+        } while (0);
+
+        // uint32 local_idx, local_offset, global_idx;
+        RESTORE_VAR(local_idx);
+        RESTORE_VAR(local_offset);
+        RESTORE_VAR(global_idx);
+
+        // uint8 local_type, *global_addr;
+        RESTORE_VAR(local_type);
+        do {
+            uint64 _addr;
+            // _addr = global_addr - global_data;
+            RESTORE_VAR(_addr);
+            global_data = _addr + global_data;
+        } while (0);
+
+        // uint32 cache_index, type_index, cell_num;
+        RESTORE_VAR(cache_index);
+        RESTORE_VAR(type_index);
+        RESTORE_VAR(cell_num);
+
+        cache_items = exec_env->block_addr_cache[cache_index];
+
+        // uint8 value_type;
+        RESTORE_VAR(value_type);
+        fclose(fp);
+
+        _module_inst = _module_inst;
+        _exec_env = exec_env;
+        _function = cur_func;
+        printf("restore done\n");
+        migr_count = 0;
+        goto RESUME;
+    }
+
 #if WASM_ENABLE_LABELS_AS_VALUES == 0
     while (frame_ip < frame_ip_end) {
         opcode = *frame_ip++;
         migr_count++;
-        if (migr_count == 100000 || sig_flag) {
+
+        if ((migr_count == 100000 || sig_flag) || migr_count > 20000) {
+            if (migr_flag) {
+                if (migr_flag2) {
+                    goto RESUME;
+                }
+                printf("restore");
+                exit(1);
+            }
+            else {
+                migr_flag = true;
+            }
+
             printf("checkpoint\n");
             SYNC_ALL_TO_FRAME();
             dump_runtime();
+            base_addr = get_base_addr();
+            FILE *fp;
 
+            if ((fp = fopen("interp.img", "wb")) == NULL) {
+                printf("file open error\n");
+                return;
+            }
 
-            /*
-            WASMMemoryInstance *memory = module->default_memory;
-            uint32 num_bytes_per_page =
-              memory ? memory->num_bytes_per_page : 0;
-            uint8 *global_data = module->global_data;
-            uint32 linear_mem_size =
-              memory ? num_bytes_per_page * memory->cur_page_count : 0;
-            WASMType **wasm_types = module->module->types;
-            WASMGlobalInstance *globals = module->globals, *global;
-            uint8 opcode_IMPDEP = WASM_OP_IMPDEP;
-            WASMInterpFrame *frame = NULL;
+            // WASMModuleInstance *module;
+            DUMP_PTR(module);
+            // WASMExecEnv *exec_env;
+            DUMP_PTR(exec_env);
+            // WASMFunctionInstance *cur_func;
+            DUMP_PTR(cur_func);
+            // WASMInterpFrame *prev_frame;
+            DUMP_PTR(prev_frame);
 
-            register uint8 *frame_ip = &opcode_IMPDEP;
-            register uint32 *frame_lp = NULL;
-            register uint32 *frame_sp = NULL;
-            WASMBranchBlock *frame_csp = NULL;
-            BlockAddr *cache_items;
-            uint8 *frame_ip_end = frame_ip + 1;
-            uint8 opcode;
-            uint32 i, depth, cond, count, fidx, tidx, lidx, frame_size = 0;
-            uint64 all_cell_num = 0;
-            int32 val;
-            uint8 *else_addr, *end_addr, *maddr = NULL;
-            uint32 local_idx, local_offset, global_idx;
-            uint8 local_type, *global_addr;
-            uint32 cache_index, type_index, cell_num;
-            uint8 value_type;*/
+            // WASMMemoryInstance *memory = module->default_memory;
+            DUMP_PTR(memory);
 
+            // uint32 num_bytes_per_page = memory ? memory->num_bytes_per_page : 0;
+            DUMP_VAR(num_bytes_per_page);
+            // uint8 *global_data = module->global_data;
+            DUMP_PTR(global_data);
+            // uint32 linear_mem_size = memory ? num_bytes_per_page * memory->cur_page_count : 0;
+            DUMP_VAR(linear_mem_size);
+            // WASMType **wasm_types = module->module->types;
+            DUMP_PTR(wasm_types);
+            // WASMGlobalInstance *globals = module->globals, *global;
+            DUMP_PTR(globals);
+            DUMP_PTR(global);
+            // uint8 opcode_IMPDEP = WASM_OP_IMPDEP;
+            DUMP_VAR(opcode_IMPDEP);
+            // WASMInterpFrame *frame = NULL;
+            DUMP_PTR(frame);
+
+            // register uint8 *frame_ip = &opcode_IMPDEP;
+            // register uint32 *frame_lp = NULL;
+            // register uint32 *frame_sp = NULL;
+            do {
+                uint64 _addr;
+                _addr = frame_ip - wasm_get_func_code(cur_func);
+                DUMP_VAR(_addr);
+                // frame_lp == cur_frame->lp
+                _addr = frame_sp - frame->sp_bottom;
+                DUMP_VAR(_addr);
+            } while (0);
+
+            // WASMBranchBlock *frame_csp = NULL;
+            do {
+                uint64 _num;
+                _num = frame_csp - frame->csp_bottom;
+                DUMP_VAR(_num);
+            } while (0);
+
+            // BlockAddr *cache_items;
+            // cache_indexより復元
+
+            // uint8 *frame_ip_end = frame_ip + 1; frame_ip_end = wasm_get_func_code_end(cur_func)
+            //DUMP_PTR(frame_ip_end);// buffer 省略可
+
+            // uint8 opcode;
+            DUMP_VAR(opcode);
+            // uint32 i, depth, cond, count, fidx, tidx, lidx, frame_size = 0;
+            DUMP_VAR(i);
+            DUMP_VAR(depth);
+            DUMP_VAR(cond);
+            DUMP_VAR(count);
+            DUMP_VAR(fidx);
+            DUMP_VAR(tidx);
+            DUMP_VAR(lidx);
+            DUMP_VAR(frame_size);
+
+            // uint64 all_cell_num = 0;
+            DUMP_VAR(all_cell_num);
+            // int32 val;
+            DUMP_VAR(val);
+            // uint8 *else_addr, *end_addr, *maddr = NULL;
+            do {
+                uint64 _addr;
+                _addr = else_addr - wasm_get_func_code(cur_func);
+                DUMP_VAR(_addr);
+                _addr = end_addr - wasm_get_func_code(cur_func);
+                DUMP_VAR(_addr);
+                _addr = maddr - memory->memory_data;
+                DUMP_VAR(maddr);
+            } while (0);
+
+            // uint32 local_idx, local_offset, global_idx;
+            DUMP_VAR(local_idx);
+            DUMP_VAR(local_offset);
+            DUMP_VAR(global_idx);
+
+            // uint8 local_type, *global_addr;
+            DUMP_VAR(local_type);
+            do {
+                uint64 _addr;
+                _addr = global_addr - global_data;
+                DUMP_VAR(_addr);
+            } while (0);
+
+            // uint32 cache_index, type_index, cell_num;
+            DUMP_VAR(cache_index);
+            DUMP_VAR(type_index);
+            DUMP_VAR(cell_num);
+
+            // uint8 value_type;
+            DUMP_VAR(value_type);
+            fclose(fp);
             exit(0);
         }
+    RESUME:
         switch (opcode) {
 #else
     FETCH_OPCODE_AND_DISPATCH();
@@ -3675,7 +3961,8 @@ wasm_interp_call_wasm(WASMModuleInstance *module_inst,
         }
     }
     else {
-        wasm_interp_call_func_bytecode(module_inst, exec_env, function, frame);
+        wasm_interp_call_func_bytecode(module_inst, exec_env, function, frame,
+                                       false);
     }
 
     /* Output the return value to the caller */
@@ -3693,4 +3980,28 @@ wasm_interp_call_wasm(WASMModuleInstance *module_inst,
 
     wasm_exec_env_set_cur_frame(exec_env, prev_frame);
     FREE_FRAME(exec_env, frame);
+}
+
+bool
+wasm_interp_restore(uint32 argc, uint32 argv[])
+{
+    int i;
+    wasm_interp_call_func_bytecode(NULL, NULL, NULL, NULL, true);
+
+    return true;
+    /* Output the return value to the caller */
+    if (!wasm_get_exception(_module_inst)) {
+        for (i = 0; i < _function->ret_cell_num; i++) {
+            argv[i] = *(_frame->sp + i - _function->ret_cell_num);
+        }
+    }
+    else {
+#if WASM_ENABLE_DUMP_CALL_STACK != 0
+        wasm_interp_dump_call_stack(exec_env);
+#endif
+        LOG_DEBUG("meet an exception %s", wasm_get_exception(_module_inst));
+    }
+
+    wasm_exec_env_set_cur_frame(_exec_env, NULL);
+    FREE_FRAME(_exec_env, _frame);
 }

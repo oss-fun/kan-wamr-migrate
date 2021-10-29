@@ -1769,6 +1769,11 @@ wasm_call_function(WASMExecEnv *exec_env,
     return !wasm_get_exception(module_inst) ? true : false;
 }
 
+bool wasm_restore_function(uint32 argc, uint32 argv[]){
+    return wasm_interp_restore(argc,argv);
+   
+}
+
 bool
 wasm_create_exec_env_and_call_function(WASMModuleInstance *module_inst,
                                        WASMFunctionInstance *func,

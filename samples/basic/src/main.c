@@ -100,9 +100,9 @@ main(int argc, char *argv_main[])
     }
 
     if (restore_flag) {
+        uint32 argv[4];
         printf("call restore_runtime\n");
-        restore_runtime();
-
+        wasm_runtime_restore(4, argv);
         printf("end restore_runtime\n");
         return 0;
     }

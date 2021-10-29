@@ -30,7 +30,6 @@
  * try break early
  */
 
-
 static bh_list loading_module_list_head;
 static bh_list *const loading_module_list = &loading_module_list_head;
 static korp_mutex loading_module_list_lock;
@@ -1180,6 +1179,12 @@ wasm_runtime_call_wasm(WASMExecEnv *exec_env,
     return ret;
 }
 
+bool
+wasm_runtime_restore(uint32 argc,uint32 argv[])
+{
+    return wasm_restore_function(argc, argv);
+}
+
 static uint32
 parse_args_to_uint32_array(WASMType *type,
                            uint32 num_args,
@@ -2157,7 +2162,7 @@ fail:
 static void *
 wasm_uvwasi_malloc(size_t size, void *mem_user_data)
 {
-    void *p= runtime_malloc(size, NULL, NULL, 0);
+    void *p = runtime_malloc(size, NULL, NULL, 0);
     alloc_info_buf(p, uint8T, size);
     return p;
     (void)mem_user_data;
@@ -2175,8 +2180,8 @@ static void *
 wasm_uvwasi_calloc(size_t nmemb, size_t size, void *mem_user_data)
 {
     uint64 total_size = (uint64)nmemb * size;
-    void *p=runtime_malloc(total_size, NULL, NULL, 0);
-    alloc_info_buf(p, uint8T,total_size);
+    void *p = runtime_malloc(total_size, NULL, NULL, 0);
+    alloc_info_buf(p, uint8T, total_size);
     (void)mem_user_data;
 }
 
