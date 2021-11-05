@@ -1036,7 +1036,6 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
     uint32 cache_index, type_index, cell_num;
     uint8 value_type;
     uint64 migr_count = 0;
-    bool migr_flag2 = false;
 
     signal(SIGINT, &wasm_interp_signal);
 
@@ -1048,7 +1047,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
 
 MIGRATION:
     if (migr_flag) {
-        migr_flag2 = true;
+        signal(SIGINT, &wasm_interp_signal);
         printf("restore\n");
         restore_runtime();
         base_addr = get_base_addr();
@@ -1091,25 +1090,26 @@ MIGRATION:
         // register uint32 *frame_lp = NULL;
         // register uint32 *frame_sp = NULL;
         do {
-            uint64 _addr;
+            int64 _addr;
             //_addr=frame_ip - wasm_get_func_code(cur_func);
             RESTORE_VAR(_addr);
-            frame_ip = _addr + wasm_get_func_code(cur_func);
+            frame_ip =
+              (_addr == -1) ? NULL : _addr + wasm_get_func_code(cur_func);
 
             // frame_lp == cur_frame->lp
             frame_lp = frame->lp;
 
             //_addr = frame_sp - frame->sp_bottom;
             RESTORE_VAR(_addr);
-            frame_sp = _addr + frame->sp_bottom;
+            frame_sp = (_addr == -1) ? NULL : _addr + frame->sp_bottom;
         } while (0);
 
         // WASMBranchBlock *frame_csp = NULL;
         do {
-            uint64 _num;
+            int64 _num;
             // _num = frame_csp - frame->csp_bottom;
             RESTORE_VAR(_num);
-            frame_csp = _num + frame->csp_bottom;
+            frame_csp = (_num == -1) ? NULL : _num + frame->csp_bottom;
         } while (0);
 
         // BlockAddr *cache_items;
@@ -1135,16 +1135,18 @@ MIGRATION:
         RESTORE_VAR(val);
         // uint8 *else_addr, *end_addr, *maddr = NULL;
         do {
-            uint64 _addr;
+            int64 _addr;
             // _addr = else_addr - wasm_get_func_code(cur_func);
             RESTORE_VAR(_addr);
-            else_addr = _addr + wasm_get_func_code(cur_func);
+            else_addr =
+              (_addr == -1) ? NULL : _addr + wasm_get_func_code(cur_func);
             // _addr = end_addr - wasm_get_func_code(cur_func);
             RESTORE_VAR(_addr);
-            end_addr = _addr + wasm_get_func_code(cur_func);
+            end_addr =
+              (_addr == -1) ? NULL : _addr + wasm_get_func_code(cur_func);
             // _addr = maddr - memory->memory_data;
-            RESTORE_VAR(maddr);
-            maddr = _addr + memory->memory_data;
+            RESTORE_VAR(_addr);
+            maddr = (_addr == -1) ? NULL : _addr + memory->memory_data;
         } while (0);
 
         // uint32 local_idx, local_offset, global_idx;
@@ -1172,11 +1174,10 @@ MIGRATION:
         RESTORE_VAR(value_type);
         fclose(fp);
 
-        _module_inst = _module_inst;
+        _module_inst = module;
         _exec_env = exec_env;
         _function = cur_func;
         printf("restore done\n");
-        migr_count = 0;
         goto RESUME;
     }
 
@@ -1184,25 +1185,13 @@ MIGRATION:
     while (frame_ip < frame_ip_end) {
         opcode = *frame_ip++;
         migr_count++;
-
-        if ((migr_count == 100000 || sig_flag) || migr_count > 20000) {
-            if (migr_flag) {
-                if (migr_flag2) {
-                    goto RESUME;
-                }
-                printf("restore");
-                exit(1);
-            }
-            else {
-                migr_flag = true;
-            }
-
+        if (sig_flag || migr_count>10000) {
             printf("checkpoint\n");
+
             SYNC_ALL_TO_FRAME();
             dump_runtime();
             base_addr = get_base_addr();
             FILE *fp;
-
             if ((fp = fopen("interp.img", "wb")) == NULL) {
                 printf("file open error\n");
                 return;
@@ -1240,18 +1229,21 @@ MIGRATION:
             // register uint32 *frame_lp = NULL;
             // register uint32 *frame_sp = NULL;
             do {
-                uint64 _addr;
-                _addr = frame_ip - wasm_get_func_code(cur_func);
+                int64 _addr;
+                _addr = (frame_ip == NULL)
+                          ? -1
+                          : frame_ip - wasm_get_func_code(cur_func);
                 DUMP_VAR(_addr);
                 // frame_lp == cur_frame->lp
-                _addr = frame_sp - frame->sp_bottom;
+                _addr = (frame_sp == NULL) ? -1 : frame_sp - frame->sp_bottom;
                 DUMP_VAR(_addr);
             } while (0);
 
             // WASMBranchBlock *frame_csp = NULL;
             do {
-                uint64 _num;
-                _num = frame_csp - frame->csp_bottom;
+                int64 _num;
+                _num =
+                  (frame_csp == NULL) ? -1 : frame_csp - frame->csp_bottom;
                 DUMP_VAR(_num);
             } while (0);
 
@@ -1280,12 +1272,16 @@ MIGRATION:
             // uint8 *else_addr, *end_addr, *maddr = NULL;
             do {
                 uint64 _addr;
-                _addr = else_addr - wasm_get_func_code(cur_func);
+                _addr = (else_addr == NULL)
+                          ? -1
+                          : else_addr - wasm_get_func_code(cur_func);
                 DUMP_VAR(_addr);
-                _addr = end_addr - wasm_get_func_code(cur_func);
+                _addr = (end_addr == NULL)
+                          ? -1
+                          : end_addr - wasm_get_func_code(cur_func);
                 DUMP_VAR(_addr);
-                _addr = maddr - memory->memory_data;
-                DUMP_VAR(maddr);
+                _addr = (maddr == NULL) ? -1 : maddr - memory->memory_data;
+                DUMP_VAR(_addr);
             } while (0);
 
             // uint32 local_idx, local_offset, global_idx;
@@ -1309,6 +1305,8 @@ MIGRATION:
             // uint8 value_type;
             DUMP_VAR(value_type);
             fclose(fp);
+            
+            printf("migr_count:%lu\n", migr_count);
             exit(0);
         }
     RESUME:
@@ -1441,8 +1439,10 @@ MIGRATION:
                     wasm_set_exception(module, "find block address failed");
                     goto got_exception;
                 }
+
                 frame_ip = end_addr;
             }
+            //printf("%p\n", frame_ip);
             HANDLE_OP_END();
 
             HANDLE_OP(WASM_OP_BR_IF)

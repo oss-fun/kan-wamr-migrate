@@ -1843,31 +1843,46 @@ restore_WASMInterpFrame(Pool_Info *addr)
     //DUMP_PTR(node->sp);
     uint64 sp; // = node->sp - node->sp_bottom;
     fread(&sp, sizeof(uint64), 1, gp);
-    node->sp = ((char *)node->sp_bottom) + sp;
+    node->sp = node->sp_bottom + sp;
 
-    WASMBranchBlock *bb;
-    uint32 bb_num;
-    fread(&bb_num, sizeof(uint32), 1, gp);
 
     node->csp = node->csp_bottom = node->sp_boundary;
     node->csp_boundary =
       node->csp_bottom + node->function->u.func->max_block_num;
 
+    uint32 bb_num;
+    fread(&bb_num, sizeof(uint32), 1, gp);
+
     for (int i = 0; i < bb_num; i++) {
         // uint8 *begin_addr; frame_ip
-        uint64 ip; // = bb->begin_addr - wasm_get_func_code(node->function);
-        fread(&ip, sizeof(uint64), 1, gp);
-        node->csp->begin_addr = ip + wasm_get_func_code(node->function);
+        int64 ip; // = bb->begin_addr - wasm_get_func_code(node->function);
+        fread(&ip, sizeof(int64), 1, gp);
+        if(ip==-1){
+            node->csp->begin_addr = NULL;
+        }
+        else {
+            node->csp->begin_addr = ip + wasm_get_func_code(node->function);
+        }
 
         // uint8 *target_addr; frame_ip
         //ip = bb->target_addr - wasm_get_func_code(node->function);
-        fread(&ip, sizeof(uint64), 1, gp);
+        fread(&ip, sizeof(int64), 1, gp);
+        if(ip==-1){
+            node->csp->target_addr = NULL;
+        }
+        else {
         node->csp->target_addr = ip + wasm_get_func_code(node->function);
+        }
 
         // uint32 *frame_sp;
         //sp = bb->frame_sp - node->sp_bottom;
-        fread(&ip, sizeof(uint64), 1, gp);
+        fread(&ip, sizeof(int64), 1, gp);
+        if(ip==-1){
+            node->csp->frame_sp = NULL;
+        }
+        else {
         node->csp->frame_sp = ip + node->sp_bottom;
+        }
 
         // uint32 cell_num;
         fread(&node->csp->cell_num, sizeof(uint32), 1, gp);

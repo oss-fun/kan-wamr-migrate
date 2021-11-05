@@ -84,8 +84,10 @@ set_WASMModule(WASMModule *module)
     wasm_module = module;
 }
 
-void set_WASMExecEnv(WASMExecEnv *exec_env){
-    _exec_env=exec_env;
+void
+set_WASMExecEnv(WASMExecEnv *exec_env)
+{
+    _exec_env = exec_env;
 }
 
 void
@@ -503,7 +505,7 @@ dump_WASMExecEnv(Pool_Info *addr)
     int i, j, k;
     HEADER_DUMP_BUF(WASMExecEnv);
 
-    _exec_env=node;
+    _exec_env = node;
     //struct WASMExecEnv *next;
     DUMP_PTR(node->next);
 
@@ -566,6 +568,7 @@ dump_WASMExecEnv(Pool_Info *addr)
                     //fwrite(&ip, sizeof(uint32), 1, fp);
                     break;
                 }
+
                 if (CHECK_IP(start_addr) && CHECK_IP(else_addr)
                     && CHECK_IP(end_addr)) {
                     DUMP_PTR(function->code); //codeバッファの抽象アドレス
@@ -1603,26 +1606,45 @@ dump_WASMInterpFrame(Pool_Info *addr)
     // DUMP_PTR(node->sp_boundary);
     // uint32 *sp;
     //DUMP_PTR(node->sp);
-    uint64 sp = (uint8 *)node->sp - (uint8 *)node->sp_bottom;
+    uint64 sp = node->sp - node->sp_bottom;
     fwrite(&sp, sizeof(uint64), 1, gp);
 
     WASMBranchBlock *bb = node->csp_bottom;
-    uint32 bb_num = node->function->u.func->max_block_num;
+    uint32 bb_num = node->csp - node->csp_bottom;
     fwrite(&bb_num, sizeof(uint32), 1, gp);
 
-    for (int i = 0; i < bb_num; i++, bb++) {
+    for (int i = 0; i < bb_num; i++, bb++)
+    {
         // uint8 *begin_addr; frame_ip
-        uint64 ip = bb->begin_addr - wasm_get_func_code(node->function);
-        fwrite(&ip, sizeof(uint64), 1, gp);
+        int64 ip;
+        if (bb->begin_addr == NULL) {
+            ip = -1;
+            fwrite(&ip, sizeof(int64), 1, gp);
+        }
+        else {
+            ip = bb->begin_addr - wasm_get_func_code(node->function);
+            fwrite(&ip, sizeof(int64), 1, gp);
+        }
 
         // uint8 *target_addr; frame_ip
-        ip = bb->target_addr - wasm_get_func_code(node->function);
-        fwrite(&ip, sizeof(uint64), 1, gp);
+        if (bb->target_addr == NULL) {
+            ip = -1;
+            fwrite(&ip, sizeof(int64), 1, gp);
+        }
+        else {
+            ip = bb->target_addr - wasm_get_func_code(node->function);
+            fwrite(&ip, sizeof(int64), 1, gp);
+        }
 
         // uint32 *frame_sp;
-        sp = bb->frame_sp - node->sp_bottom;
-        fwrite(&sp, sizeof(uint64), 1, gp);
-
+        if (bb->frame_sp == NULL) {
+            ip = -1;
+            fwrite(&ip, sizeof(int64), 1, gp);
+        }
+        else {
+            sp = bb->frame_sp - node->sp_bottom;
+            fwrite(&sp, sizeof(int64), 1, gp);
+        }
         // uint32 cell_num;
         fwrite(&bb->cell_num, sizeof(uint32), 1, gp);
     }
