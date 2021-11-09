@@ -1313,8 +1313,6 @@ MIGRATION:
             exit(0);
         }
     RESUME:
-        printf("frame_ip:%p\n", frame_ip);
-        printf("opcode:%x\n", opcode);
         switch (opcode) {
 #else
     FETCH_OPCODE_AND_DISPATCH();
@@ -1406,8 +1404,6 @@ MIGRATION:
                     frame_ip = else_addr + 1;
                 }
             }
-            printf("frame_ip:\t%p\n", frame_ip);
-            printf("frame_ip_end:\t%p\n", frame_ip_end);
             HANDLE_OP_END();
 
             HANDLE_OP(WASM_OP_ELSE)
