@@ -1178,7 +1178,7 @@ MIGRATION:
         _function = cur_func;
         migr_count = 0;
         printf("restore done\n");
-        SYNC_ALL_TO_FRAME();
+        //SYNC_ALL_TO_FRAME();
         goto RESUME;
     }
 
