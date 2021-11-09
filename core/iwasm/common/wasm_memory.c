@@ -186,7 +186,8 @@ init_dump_func(void)
         break;
 
 void *
-get_base_addr(void){
+get_base_addr(void)
+{
     return pool_allocator;
 }
 
@@ -240,7 +241,7 @@ get_frame_info(int p_abs)
         return NULL;
     }
     while (info) {
-        if(info->p_abs==p_abs){
+        if (info->p_abs == p_abs) {
             return info;
         }
         info = info->next;
@@ -255,6 +256,24 @@ Pool_Info *
 get_root_frame_info(void)
 {
     return root_frame;
+}
+
+void
+abs_translation(void)
+{
+    Pool_Info *info = root_info, *p;
+    unsigned long _p;
+
+    while (info) {
+        p = info->list;
+        while (p) {
+            p->p_abs = (unsigned long)p->p_raw - (unsigned long)pool_allocator;
+            p = p->list;
+        }
+        info->p_abs =
+          (unsigned long)info->p_raw - (unsigned long)pool_allocator;
+        info = info->next;
+    }
 }
 
 void
@@ -296,7 +315,11 @@ restore_runtime(void)
                     printf("%d:%d\n", data_size[type], size);
                     exit(1);
                 }
+
                 info->p_raw = wasm_runtime_malloc(data_size[type] + size);
+                if (type == WASMExecEnvT) {
+                    set_WASMExecEnv(info->p_raw);
+                }
                 info->next = root_info;
                 root_info = info;
                 break;
@@ -313,7 +336,7 @@ restore_runtime(void)
                         p = p->next;
                     }
                     if (q == NULL) {
-                        info->next=root_frame;
+                        info->next = root_frame;
                         root_frame = info;
                     }
                     else {
@@ -323,11 +346,13 @@ restore_runtime(void)
                 }
                 break;
 
+            case gc_heap_tT:
             case WASIContextT:
             case fd_tableT:
             case fd_prestatsT:
             case argv_environ_valuesT:
             case WASI_FILE_T:
+                free(info);
                 break;
 
             case charT:
@@ -352,7 +377,10 @@ restore_runtime(void)
                     exit(1);
                 }
                 info->p_raw = wasm_runtime_malloc(data_size[type] * size);
-                Pool_Info *q=info;
+                if (type == WASMModuleT) {
+                    set_WASMModule(info->p_raw);
+                }
+                Pool_Info *q = info;
                 for (i = 1; i < size; i++) {
                     p = calloc(1, sizeof(Pool_Info));
                     fread(&p_abs, sizeof(int), 1, fp);
@@ -361,7 +389,7 @@ restore_runtime(void)
                     p->size = -1;
                     p->type = type;
                     p->next = NULL;
-                    p->list=NULL;
+                    p->list = NULL;
                     q->list = p;
                     q = p;
                 }
@@ -373,6 +401,13 @@ restore_runtime(void)
 
     restore_internal();
     restore_frame_internal();
+    info = root_frame;
+    while (info->next) {
+        info = info->next;
+    }
+    info->next = root_info;
+    root_info = root_frame;
+    //root_frame = NULL;
 }
 
 void
@@ -391,6 +426,8 @@ dump_runtime(void)
 
     while (info) {
         switch (info->type) {
+            case gc_heap_tT:
+            case WASIContextT:
             case WASI_FILE_T:
             case NativeSymbolsNodeT:
             case fd_prestatsT:
@@ -462,11 +499,10 @@ alloc_info_ex(void *addr, Data_Type type, size_t size)
         printf("error\n");
         exit(1);
     }
-    if (type==WASMExecEnvT)
-    {
+    if (type == WASMExecEnvT) {
         set_WASMExecEnv(addr);
     }
-    
+
 #ifdef __FREE_DEBUG
     printf("ex:[%p]:[%d]:[%ld]\n", addr, type, size);
 #endif
@@ -690,7 +726,7 @@ free_info(void *addr)
         prev = info;
         info = info->next;
     }
-    
+
     printf("free error[%p]\n", addr);
 
     info = root_info;

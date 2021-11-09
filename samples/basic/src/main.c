@@ -222,7 +222,7 @@ fail:
     if (module)
         wasm_runtime_unload(module);
     if (buffer)
-        BH_FREE(buffer);
+        //BH_FREE(buffer);
     wasm_runtime_destroy();
     return 0;
 }

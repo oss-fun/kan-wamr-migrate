@@ -39,27 +39,33 @@ cd ${WASM_APPS}
 for i in `ls *.c`
 do
 APP_SRC="$i"
-OUT_FILE=${i%.*}.wasm
+OUT_FILE=${i%.*}
+OUT_FILE_WASM=${OUT_FILE}.wasm
+OUT_FILE_WAT=${OUT_FILE}.wat
 
 # use WAMR SDK to build out the .wasm binary
-#--sysroot=${WAMR_DIR}/wamr-sdk/out/$PROFILE/app-sdk/libc-builtin-sysroot  \
-#        -Wl,--allow-undefined-file=${WAMR_DIR}/wamr-sdk/out/$PROFILE/app-sdk/libc-builtin-sysroot/share/defined-symbols.txt \
+#--sysroot=${WAMR_DIR}/wamr-sdk/app/libc-builtin-sysroot  \
+#        -Wl,--allow-undefined-file=${WAMR_DIR}/wamr-sdk/app/libc-builtin-sysroot/share/defined-symbols.txt \
 
+#--sysroot=/opt/wasi-sdk/share/wasi-sysroot \
 /opt/wasi-sdk/bin/clang     \
-        --target=wasm32-wasi -O0 -z stack-size=4096 -Wl,--initial-memory=65536 \
+        --target=wasm32-wasi -O3 -z stack-size=4096 -Wl,--initial-memory=65536 \
         --sysroot=/opt/wasi-sdk/share/wasi-sysroot \
         -Wl,--strip-all,--no-entry \
         -Wl,--export=generate_float \
         -Wl,--export=float_to_string \
         -Wl,--export=calculate\
+        -Wl,--export=malloc \
+        -Wl,--export=free \
         -Wl,--allow-undefined \
-        -o ${OUT_DIR}/wasm-apps/${OUT_FILE} ${APP_SRC}
+        -o ${OUT_DIR}/wasm-apps/${OUT_FILE_WASM} ${APP_SRC}
 
+wasm2wat ${OUT_DIR}/wasm-apps/${OUT_FILE_WASM} -o ${OUT_DIR}/wasm-apps/${OUT_FILE_WAT}
 
-if [ -f ${OUT_DIR}/wasm-apps/${OUT_FILE} ]; then
-        echo "build ${OUT_FILE} success"
+if [ -f ${OUT_DIR}/wasm-apps/${OUT_FILE_WASM} ]; then
+        echo "build ${OUT_FILE_WASM} success"
 else
-        echo "build ${OUT_FILE} fail"
+        echo "build ${OUT_FILE_WASM} fail"
 fi
 done
 echo "####################build wasm apps done"

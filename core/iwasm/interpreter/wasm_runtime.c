@@ -1905,7 +1905,6 @@ wasm_module_malloc(WASMModuleInstance *module_inst,
     WASMMemoryInstance *memory = module_inst->default_memory;
     uint8 *addr = NULL;
     uint32 offset = 0;
-    
     if (!memory) {
         wasm_set_exception(module_inst, "uninitialized memory");
         return 0;

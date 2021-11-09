@@ -1006,6 +1006,8 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
                                WASMInterpFrame *prev_frame,
                                bool migr_flag)
 {
+    signal(SIGINT, &wasm_interp_signal);
+
     if (migr_flag) {
         goto MIGRATION;
     }
@@ -1037,8 +1039,6 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
     uint8 value_type;
     uint64 migr_count = 0;
 
-    signal(SIGINT, &wasm_interp_signal);
-
 #if WASM_ENABLE_LABELS_AS_VALUES != 0
 #define HANDLE_OPCODE(op) &&HANDLE_##op
     DEFINE_GOTO_TABLE(const void *, handle_table);
@@ -1047,7 +1047,6 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
 
 MIGRATION:
     if (migr_flag) {
-        signal(SIGINT, &wasm_interp_signal);
         printf("restore\n");
         restore_runtime();
         base_addr = get_base_addr();
@@ -1177,7 +1176,9 @@ MIGRATION:
         _module_inst = module;
         _exec_env = exec_env;
         _function = cur_func;
+        migr_count = 0;
         printf("restore done\n");
+        SYNC_ALL_TO_FRAME();
         goto RESUME;
     }
 
@@ -1185,9 +1186,12 @@ MIGRATION:
     while (frame_ip < frame_ip_end) {
         opcode = *frame_ip++;
         migr_count++;
-        if (sig_flag || migr_count>10000) {
+        if (sig_flag) {
             printf("checkpoint\n");
-
+            printf("migr_count:%lu\n", migr_count);
+            if (migr_flag) {
+                abs_translation();
+            }
             SYNC_ALL_TO_FRAME();
             dump_runtime();
             base_addr = get_base_addr();
@@ -1234,7 +1238,7 @@ MIGRATION:
                           ? -1
                           : frame_ip - wasm_get_func_code(cur_func);
                 DUMP_VAR(_addr);
-                // frame_lp == cur_frame->lp
+                // frame_lp == frame->lp
                 _addr = (frame_sp == NULL) ? -1 : frame_sp - frame->sp_bottom;
                 DUMP_VAR(_addr);
             } while (0);
@@ -1305,11 +1309,12 @@ MIGRATION:
             // uint8 value_type;
             DUMP_VAR(value_type);
             fclose(fp);
-            
-            printf("migr_count:%lu\n", migr_count);
+
             exit(0);
         }
     RESUME:
+        printf("frame_ip:%p\n", frame_ip);
+        printf("opcode:%x\n", opcode);
         switch (opcode) {
 #else
     FETCH_OPCODE_AND_DISPATCH();
@@ -1401,6 +1406,8 @@ MIGRATION:
                     frame_ip = else_addr + 1;
                 }
             }
+            printf("frame_ip:\t%p\n", frame_ip);
+            printf("frame_ip_end:\t%p\n", frame_ip_end);
             HANDLE_OP_END();
 
             HANDLE_OP(WASM_OP_ELSE)

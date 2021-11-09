@@ -180,6 +180,9 @@ Pool_Info *
 get_root_frame_info(void);
 
 void
+abs_translation(void);
+
+void
 restore_runtime(void);
 void
 dump_runtime(void);

@@ -1613,8 +1613,7 @@ dump_WASMInterpFrame(Pool_Info *addr)
     uint32 bb_num = node->csp - node->csp_bottom;
     fwrite(&bb_num, sizeof(uint32), 1, gp);
 
-    for (int i = 0; i < bb_num; i++, bb++)
-    {
+    for (int i = 0; i < bb_num; i++, bb++) {
         // uint8 *begin_addr; frame_ip
         int64 ip;
         if (bb->begin_addr == NULL) {

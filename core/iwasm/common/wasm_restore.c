@@ -13,7 +13,7 @@
 
 static FILE *fp, *gp;
 static unsigned long base;
-static WASMModule *_module_static;
+static WASMModule *_module;
 static WASMModuleInstance *_module_inst_static;
 static WASMExecEnv *_exec_env_static;
 
@@ -200,6 +200,7 @@ restore_internal(void)
         fread(&p_abs, sizeof(int), 1, fp);
 
         info = get_info(p_abs);
+
         (*restore_data[type])(info);
     }
     printf("end restore_internal\n");
@@ -238,23 +239,23 @@ restore_frame_internal(void)
 
     if (!wasm_runtime_init_wasi(
           (WASMModuleInstanceCommon *)_module_inst_static,
-          _module_static->wasi_args.dir_list,
-          _module_static->wasi_args.dir_count,
-          _module_static->wasi_args.map_dir_list,
-          _module_static->wasi_args.map_dir_count,
-          _module_static->wasi_args.env, _module_static->wasi_args.env_count,
-          _module_static->wasi_args.argv, _module_static->wasi_args.argc,
-          _module_static->wasi_args.stdio[0],
-          _module_static->wasi_args.stdio[1],
-          _module_static->wasi_args.stdio[2], error_buf, sizeof(error_buf))) {
+          _module->wasi_args.dir_list,
+          _module->wasi_args.dir_count,
+          _module->wasi_args.map_dir_list,
+          _module->wasi_args.map_dir_count,
+          _module->wasi_args.env, _module->wasi_args.env_count,
+          _module->wasi_args.argv, _module->wasi_args.argc,
+          _module->wasi_args.stdio[0],
+          _module->wasi_args.stdio[1],
+          _module->wasi_args.stdio[2], error_buf, sizeof(error_buf))) {
         printf("error init wasi\n");
     }
     else {
         printf("init wasi\n");
     }
 
-    WASMImport *import = _module_static->import_functions;
-    for (i = 0; i < _module_static->import_function_count; i++, import++) {
+    WASMImport *import = _module->import_functions;
+    for (i = 0; i < _module->import_function_count; i++, import++) {
         const char *linked_signature = NULL;
         void *linked_attachment = NULL;
         bool linked_call_conv_raw = false;
@@ -964,7 +965,7 @@ restore_WASMModule(Pool_Info *addr) // 要チェック
 {
     int p_abs;
     Pool_Info *info;
-    _module_static = addr->p_raw;
+    _module = addr->p_raw;
     HEADER_RESTORE(WASMModule)
     {
         fread(&p_abs, sizeof(int), 1, fp);
@@ -1011,7 +1012,7 @@ restore_WASMModule(Pool_Info *addr) // 要チェック
         RESTORE_PTR(node->import_memories);
         //WASMImport *import_globals;
         RESTORE_PTR(node->import_globals);
-
+        
         //WASMType **types;
         RESTORE_PTR(node->types);
         //WASMImport *imports;

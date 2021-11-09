@@ -8,7 +8,6 @@
 #include <string.h>
 #include <stdint.h>
 
-
 int
 intToStr(int x, char *str, int str_len, int digit);
 int
@@ -16,6 +15,15 @@ get_pow(int x, int y);
 int32_t
 calculate_native(int32_t n, int32_t func1, int32_t func2);
 
+int32_t
+mul7(int32_t n);
+
+typedef struct Node {
+    float f;
+    struct Node *next;
+} Node;
+
+static Node *root=NULL;
 //
 // Primitive parameters functions
 //
@@ -24,17 +32,32 @@ generate_float(int iteration, double seed1, float seed2)
 {
     float ret;
     int *p;
+    Node *node;
 
     printf("calling into WASM function: %s\n", __FUNCTION__);
 
     for (int i = 0; i < iteration; i++) {
+        node = malloc(sizeof(Node));
         ret += 1.0f / seed1 + seed2;
+        node->f = ret;
+        node->next = root;
+        root = node;
     }
 
+    node = root;
     for (int i = 0; i < 100000; i++) {
+        int tmp;
         p = malloc(sizeof(*p));
         *p = i;
         printf("%d\n", *p);
+        tmp=mul7(*p);
+        if (node != NULL) {
+            printf("%d\n", *p + (int)node->f);
+            node = node->next;
+            
+        }
+        printf("tmp:%d\n", tmp);
+
         free(p);
     }
     printf("exit from WASM function: %s\n", __FUNCTION__);
@@ -51,7 +74,7 @@ float_to_string(float n, char *res, int res_size, int afterpoint)
 
     // Extract integer part
     int ipart = (int)n;
-
+    printf("%p\n", root);
     // Extract floating part
     float fpart = n - (float)ipart;
 
