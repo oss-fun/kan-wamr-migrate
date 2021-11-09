@@ -1313,6 +1313,7 @@ MIGRATION:
             exit(0);
         }
     RESUME:
+        printf("opcode:%x\n", opcode);
         switch (opcode) {
 #else
     FETCH_OPCODE_AND_DISPATCH();
