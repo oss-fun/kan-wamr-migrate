@@ -164,13 +164,14 @@
 /* WASM Interpreter labels-as-values feature */
 #ifndef WASM_ENABLE_LABELS_AS_VALUES
 #ifdef __GNUC__
-#define WASM_ENABLE_LABELS_AS_VALUES 1
+#define WASM_ENABLE_LABELS_AS_VALUES 0
 #else
 #define WASM_ENABLE_LABELS_AS_VALUES 0
 #endif
 #endif
 
 /* Enable fast interpreter or not */
+#define WASM_ENABLE_FAST_INTERP 0
 #ifndef WASM_ENABLE_FAST_INTERP
 #define WASM_ENABLE_FAST_INTERP 0
 #endif
