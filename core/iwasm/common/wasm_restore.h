@@ -4,6 +4,9 @@
 #include "wasm_exec_env.h"
 #include "../interpreter/wasm_interp.h"
 
+WASMInterpFrame *
+wasm_restore_frame(WASMExecEnv *exec_env);
+
 static void
 restore_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env,
                         FILE *fp);

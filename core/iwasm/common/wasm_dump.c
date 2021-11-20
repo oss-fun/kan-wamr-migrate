@@ -6,14 +6,11 @@
 static Frame_Info *root_info = NULL, *tail_info = NULL;
 
 void
-wasm_dump_alloc_frame(WASMInterpFrame *frame, uint32 size,
-                      WASMExecEnv *exec_env)
+wasm_dump_alloc_frame(WASMInterpFrame *frame, WASMExecEnv *exec_env)
 {
     Frame_Info *info;
     info = malloc(sizeof(Frame_Info));
     info->frame = frame;
-    info->size = size;
-    info->exec_env = exec_env;
     info->prev = tail_info;
     info->next = NULL;
 
@@ -35,7 +32,7 @@ wasm_dump_free_frame(void)
 }
 
 void
-wasm_dump_frame(void)
+wasm_dump_frame(WASMExecEnv *exec_env)
 {
     Frame_Info *info;
     FILE *fp;
@@ -43,10 +40,21 @@ wasm_dump_frame(void)
         printf("dump failed\n");
         exit(1);
     }
-    fp = fopen("frame.img", "w");
+    fp = fopen("frame.img", "wb");
     info = root_info;
     while (info) {
-        dump_WASMInterpFrame(info->frame, info->exec_env, fp);
+        uint32 func_idx;
+        if (info->frame->function == NULL) {
+            func_idx = -1;
+            fwrite(&func_idx, sizeof(uint32), 1, fp);
+        }
+        else {
+            func_idx = frame->function - module_inst->functions;
+            fwrite(&func_idx, sizeof(uint32), 1, fp);
+
+            dump_WASMInterpFrame(info->frame, exec_env, fp);
+        }
+        info = info->next;
     }
 }
 
@@ -57,19 +65,7 @@ dump_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
     WASMModuleInstance *module_inst = exec_env->module_inst;
 
     // struct WASMInterpFrame *prev_frame;
-    /*
-        skip
-    */
-
     // struct WASMFunctionInstance *function;
-    if (frame->function == NULL) {
-        uint32 func_idx = -1;
-        fwrite(&func_idx, sizeof(uint32), 1, fp);
-        return;
-    }
-    uint32 func_idx = frame->function - module_inst->functions;
-    fwrite(&func_idx, sizeof(uint32), 1, fp);
-
     // uint8 *ip;
     uint32 ip_offset = frame->ip - wasm_get_func_code(frame->function);
     fwrite(&ip_offset, sizeof(uint32), 1, fp);

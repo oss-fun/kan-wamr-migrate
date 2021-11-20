@@ -6,21 +6,20 @@
 
 typedef struct Frame_Info {
     WASMInterpFrame *frame;
-    WASMExecEnv *exec_env;
-    uint32 size;
     struct Frame_Info *prev;
     struct Frame_Info *next;
 } Frame_Info;
 
 void
-wasm_dump_alloc_frame(WASMInterpFrame *frame, uint32 size,
-                      WASMExecEnv *exec_env);
+wasm_dump_alloc_frame(WASMInterpFrame *frame, WASMExecEnv *exec_env);
 
 void
 wasm_dump_free_frame(void);
 
 void
-wasm_dump_frame(void);
+wasm_dump_frame(WASMExecEnv *exec_env);
 
+static void
+dump_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp);
 
 #endif // _WASM_CHECKPOINT_H

@@ -3,6 +3,12 @@
 #include "../interpreter/wasm_runtime.h"
 #include "wasm_restore.h"
 
+WASMInterpFrame *
+wasm_restore_frame(WASMExecEnv *exec_env){
+    WASMInterpFrame *prev_frame=wasm_exec_env_get_cur_frame(exec_env);
+    
+}
+
 static void
 restore_WASMMemoryInstance(WASMMemoryInstance *memory, WASMExecEnv *exec_env,
                         FILE *fp)
