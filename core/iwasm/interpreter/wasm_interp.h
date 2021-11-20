@@ -43,6 +43,10 @@ typedef struct WASMInterpFrame {
     uint32 *sp_boundary;
     uint32 *sp;
 
+    uint8 *tsp_bottom;
+    uint8 *tsp_boundary;
+    uint8 *tsp;
+
     WASMBranchBlock *csp_bottom;
     WASMBranchBlock *csp_boundary;
     WASMBranchBlock *csp;
@@ -53,9 +57,6 @@ typedef struct WASMInterpFrame {
        csp_bottom to csp_boundary: stack of block
        ref to frame end: data types of local vairables and stack data
        */
-    uint8 *tsp_bottom;
-    uint8 *tsp_boundary;
-    uint8 *tsp;
     uint32 lp[1];
 #endif
 } WASMInterpFrame;

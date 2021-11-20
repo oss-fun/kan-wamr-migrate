@@ -13,13 +13,14 @@ typedef struct Frame_Info {
 } Frame_Info;
 
 void
-wasm_checkpoint_alloc_frame(WASMInterpFrame *frame, uint32 size,
-                            WASMExecEnv *exec_env);
+wasm_dump_alloc_frame(WASMInterpFrame *frame, uint32 size,
+                      WASMExecEnv *exec_env);
 
 void
-wasm_checkpoint_free_frame(void);
+wasm_dump_free_frame(void);
 
-static void
-dump_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env,FILE *fp);
+void
+wasm_dump_frame(void);
+
 
 #endif // _WASM_CHECKPOINT_H
