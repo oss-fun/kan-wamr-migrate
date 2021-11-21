@@ -799,7 +799,7 @@ FREE_FRAME(WASMExecEnv *exec_env, WASMInterpFrame *frame)
 #endif
     wasm_dump_free_frame();
 
-    if (frame->function && !frame->function->is_import_func) {
+    if (frame->tsp_bottom) {
         wasm_runtime_free(frame->tsp_bottom);
     }
 
@@ -3880,7 +3880,11 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
 
             if (!(frame->tsp = wasm_runtime_malloc(
                       (uint64)cur_wasm_func->max_stack_cell_num))) {
-                exit(1);
+                printf("tsp malloc error\n");
+                // exit(1);
+            }
+            else {
+                printf("tsp malloc success\n");
             }
             frame_tsp = frame->tsp_bottom = frame->tsp;
             frame->tsp_boundary =
@@ -3970,7 +3974,11 @@ wasm_interp_call_wasm(WASMModuleInstance *module_inst, WASMExecEnv *exec_env,
         return;
 
     if (!(frame->tsp = wasm_runtime_malloc((uint64)all_cell_num))) {
-        exit(1);
+        printf("tsp malloc error\n");
+        // exit(1);
+    }
+    else {
+        printf("tsp malloc success\n");
     }
     frame->tsp_bottom = frame->tsp;
     frame->tsp_boundary = frame->tsp_bottom + all_cell_num;
