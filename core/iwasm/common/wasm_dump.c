@@ -6,11 +6,25 @@
 static Frame_Info *root_info = NULL, *tail_info = NULL;
 
 void
+wasm_dump_set_root_and_tail(Frame_Info *root, Frame_Info *tail)
+{
+    root_info = root;
+    tail_info = tail;
+}
+
+void
+wasm_dump_alloc_init_frame(uint32 all_cell_num)
+{
+    root_info->all_cell_num = all_cell_num;
+}
+
+void
 wasm_dump_alloc_frame(WASMInterpFrame *frame, WASMExecEnv *exec_env)
 {
     Frame_Info *info;
     info = malloc(sizeof(Frame_Info));
     info->frame = frame;
+    info->all_cell_num = 0;
     info->prev = tail_info;
     info->next = NULL;
 
@@ -26,36 +40,50 @@ wasm_dump_alloc_frame(WASMInterpFrame *frame, WASMExecEnv *exec_env)
 void
 wasm_dump_free_frame(void)
 {
-    tail_info = tail_info->prev;
-    free(tail_info->next);
-    tail_info->next = NULL;
+    if (root_info == tail_info) {
+        free(root_info);
+        root_info = tail_info = NULL;
+    }
+    else {
+        tail_info = tail_info->prev;
+        free(tail_info->next);
+        tail_info->next = NULL;
+    }
 }
 
 void
 wasm_dump_frame(WASMExecEnv *exec_env)
 {
+    WASMModuleInstance *module_inst =
+        (WASMModuleInstance *)exec_env->module_inst;
     Frame_Info *info;
+    uint32 func_idx;
     FILE *fp;
+
     if (!root_info) {
         printf("dump failed\n");
         exit(1);
     }
     fp = fopen("frame.img", "wb");
     info = root_info;
+
     while (info) {
-        uint32 func_idx;
+
         if (info->frame->function == NULL) {
+            // 初期フレーム
             func_idx = -1;
             fwrite(&func_idx, sizeof(uint32), 1, fp);
+            fwrite(&info->all_cell_num, sizeof(uint32), 1, fp);
         }
         else {
-            func_idx = frame->function - module_inst->functions;
+            func_idx = info->frame->function - module_inst->functions;
             fwrite(&func_idx, sizeof(uint32), 1, fp);
 
             dump_WASMInterpFrame(info->frame, exec_env, fp);
         }
         info = info->next;
     }
+    fclose(fp);
 }
 
 static void
@@ -130,16 +158,37 @@ dump_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
                 break;
         }
     }
+    /*
     uint8 *tsp = frame->tsp_bottom;
     while (tsp != frame->tsp) {
         fwrite(tsp, sizeof(uint8), 1, fp);
         tsp++;
     }
-
+    */
+    fwrite(frame->tsp_bottom, sizeof(uint8), tsp_offset, fp);
+    /*
     uint32 *sp = frame->sp_bottom;
     while (sp != frame->sp) {
         fwrite(sp, sizeof(uint32), 1, fp);
         sp++;
+    }
+    */
+    for (i = 0; i < sp_offset;) {
+        switch (frame->tsp_bottom[i]) {
+            case VALUE_TYPE_I32:
+            case VALUE_TYPE_F32:
+                fwrite(&frame->sp_bottom[i], sizeof(uint32), 1, fp);
+                i++;
+                break;
+            case VALUE_TYPE_I64:
+            case VALUE_TYPE_F64:
+                fwrite(&frame->sp_bottom[i], sizeof(uint64), 1, fp);
+                i += 2;
+                break;
+            default:
+                printf("type error\n");
+                break;
+        }
     }
 
     WASMBranchBlock *csp = frame->csp_bottom;

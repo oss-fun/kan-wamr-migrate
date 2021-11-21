@@ -2,6 +2,7 @@
  * Copyright (C) 2019 Intel Corporation.  All rights reserved.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
+#include <signal.h>
 
 #include "wasm.h"
 #include "wasm_interp.h"
@@ -797,6 +798,11 @@ FREE_FRAME(WASMExecEnv *exec_env, WASMInterpFrame *frame)
     }
 #endif
     wasm_dump_free_frame();
+
+    if (frame->function && !frame->function->is_import_func) {
+        wasm_runtime_free(frame->tsp_bottom);
+    }
+
     wasm_exec_env_free_wasm_frame(exec_env, frame);
 }
 
@@ -1055,6 +1061,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
     DEFINE_GOTO_TABLE(const void *, handle_table);
 #undef HANDLE_OPCODE
 #endif
+    signal(SIGINT, &wasm_interp_signal);
 
     if (restore_flag) {
         FILE *fp;
@@ -3962,6 +3969,13 @@ wasm_interp_call_wasm(WASMModuleInstance *module_inst, WASMExecEnv *exec_env,
               ALLOC_FRAME(exec_env, frame_size, (WASMInterpFrame *)prev_frame)))
         return;
 
+    if (!(frame->tsp = wasm_runtime_malloc((uint64)all_cell_num))) {
+        exit(1);
+    }
+    frame->tsp_bottom = frame->tsp;
+    frame->tsp_boundary = frame->tsp_bottom + all_cell_num;
+
+    wasm_dump_alloc_init_frame(all_cell_num);
     outs_area = wasm_exec_env_wasm_stack_top(exec_env);
     frame->function = NULL;
     frame->ip = NULL;

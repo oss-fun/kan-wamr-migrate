@@ -1,17 +1,110 @@
 #include <stdlib.h>
 
+#include "wasm_exec_env.h"
+#include "wasm_memory.h"
 #include "../interpreter/wasm_runtime.h"
+#include "wasm_dump.h"
 #include "wasm_restore.h"
 
+static Frame_Info *root_info = NULL, *tail_info = NULL;
+
+static inline WASMInterpFrame *
+ALLOC_FRAME(WASMExecEnv *exec_env, uint32 size, WASMInterpFrame *prev_frame)
+{
+    WASMInterpFrame *frame = wasm_exec_env_alloc_wasm_frame(exec_env, size);
+
+    if (frame) {
+        wasm_dump_alloc_frame(frame, exec_env);
+        frame->prev_frame = prev_frame;
+#if WASM_ENABLE_PERF_PROFILING != 0
+        frame->time_started = os_time_get_boot_microsecond();
+#endif
+    }
+    else {
+        wasm_set_exception((WASMModuleInstance *)exec_env->module_inst,
+                           "wasm operand stack overflow");
+    }
+
+    return frame;
+}
+
 WASMInterpFrame *
-wasm_restore_frame(WASMExecEnv *exec_env){
-    WASMInterpFrame *prev_frame=wasm_exec_env_get_cur_frame(exec_env);
-    
+wasm_restore_frame(WASMExecEnv *exec_env)
+{
+    WASMModuleInstance *module_inst =
+        (WASMModuleInstance *)exec_env->module_inst;
+    WASMInterpFrame *frame, *prev_frame = wasm_exec_env_get_cur_frame(exec_env);
+    WASMFunctionInstance *function;
+    Frame_Info *info;
+    uint32 func_idx, frame_size, all_cell_num;
+    FILE *fp;
+
+    fp = fopen("frame.img", "rb");
+
+    info = malloc(sizeof(Frame_Info));
+
+    while (!feof(fp)) {
+
+        if ((fread(&func_idx, sizeof(int), 1, fp)) == 0) {
+            break;
+        }
+
+        if (func_idx == -1) {
+            // 初期フレームのスタックサイズをreadしてALLOC
+            fread(&all_cell_num, sizeof(uint32), 1, fp);
+            frame_size = wasm_interp_interp_frame_size(all_cell_num);
+            frame = ALLOC_FRAME(exec_env, frame_size,
+                                (WASMInterpFrame *)prev_frame);
+
+            // 初期フレームをrestore
+            frame->function = NULL;
+            frame->ip = NULL;
+            frame->sp = frame->lp + 0;
+
+            if (!(frame->tsp = wasm_runtime_malloc((uint64)all_cell_num))) {
+                exit(1);
+            }
+            frame->tsp_bottom = frame->tsp;
+            frame->tsp_boundary = frame->tsp_bottom + all_cell_num;
+
+            info->frame = prev_frame = frame;
+            info->all_cell_num = all_cell_num;
+        }
+        else {
+            // 関数からスタックサイズを計算し,ALLOC
+            function = module_inst->functions + func_idx;
+            all_cell_num = (uint64)function->param_cell_num
+                           + (uint64)function->local_cell_num
+                           + (uint64)function->u.func->max_stack_cell_num
+                           + ((uint64)function->u.func->max_block_num)
+                                 * sizeof(WASMBranchBlock) / 4;
+            frame_size = wasm_interp_interp_frame_size(all_cell_num);
+            frame = ALLOC_FRAME(exec_env, frame_size,
+                                (WASMInterpFrame *)prev_frame);
+
+            // フレームをrestore
+            frame->function = function;
+            restore_WASMInterpFrame(frame, exec_env, fp);
+
+            info->frame = prev_frame = frame;
+        }
+
+        if (root_info == NULL) {
+            root_info = tail_info = info;
+        }
+        else {
+            tail_info->next = info;
+            tail_info = tail_info->next;
+        }
+    }
+    wasm_exec_env_set_cur_frame(exec_env, frame);
+    wasm_dump_set_root_and_tail(root_info, tail_info);
+    fclose(fp);
 }
 
 static void
 restore_WASMMemoryInstance(WASMMemoryInstance *memory, WASMExecEnv *exec_env,
-                        FILE *fp)
+                           FILE *fp)
 {
     // /* Module type */
     // uint32 module_type;
@@ -49,7 +142,7 @@ restore_WASMMemoryInstance(WASMMemoryInstance *memory, WASMExecEnv *exec_env,
              must be copied to new memory also. */
     // uint8 *memory_data;
     fread(memory->memory_data, sizeof(uint8),
-           memory->memory_data_end - memory->memory_data, fp);
+          memory->memory_data_end - memory->memory_data, fp);
 }
 
 static void
@@ -57,22 +150,10 @@ restore_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
 {
     int i;
     WASMModuleInstance *module_inst = exec_env->module_inst;
-
-    // struct WASMInterpFrame *prev_frame;
-    /*
-        skip
-    */
-
-    // struct WASMFunctionInstance *function;
-    uint32 func_idx;
-    fread(&func_idx, sizeof(uint32), 1, fp);
-    if (func_idx == -1) {
-        return;
-    }
-
-    frame->function = module_inst->functions + func_idx;
     WASMFunctionInstance *func = frame->function;
 
+    // struct WASMInterpFrame *prev_frame;
+    // struct WASMFunctionInstance *function;
     // uint8 *ip;
     uint32 ip_offset;
     fread(&ip_offset, sizeof(uint32), 1, fp);
@@ -130,7 +211,7 @@ restore_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
                 lp += 2;
                 break;
             default:
-            printf("TYPE NULL\n");
+                printf("TYPE NULL\n");
                 break;
         }
     }
@@ -147,35 +228,34 @@ restore_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
                 lp += 2;
                 break;
             default:
-            printf("TYPE NULL\n");
+                printf("TYPE NULL\n");
                 break;
         }
     }
 
+    /*
     uint8 *tsp = frame->tsp_bottom;
     while (tsp != frame->tsp) {
         fread(tsp, sizeof(uint8), 1, fp);
         tsp++;
     }
+    */
+    fread(frame->tsp_bottom, sizeof(uint8), tsp_offset, fp);
 
-    tsp = frame->tsp_bottom;
-    uint32 *sp = frame->sp_bottom;
-    while (sp != frame->sp) {
-        switch (*tsp) {
+    for (i = 0; i < sp_offset;) {
+        switch (frame->tsp_bottom[i]) {
             case VALUE_TYPE_I32:
             case VALUE_TYPE_F32:
-                fread(sp, sizeof(uint32), 1, fp);
-                sp++;
-                tsp++;
+                fread(&frame->sp_bottom[i], sizeof(uint32), 1, fp);
+                i++;
                 break;
             case VALUE_TYPE_I64:
             case VALUE_TYPE_F64:
-                fread(sp, sizeof(uint64), 1, fp);
-                sp += 2;
-                tsp += 2;
+                fread(&frame->sp_bottom[i], sizeof(uint64), 1, fp);
+                i += 2;
                 break;
             default:
-                printf("TYPE NULL\n");
+                printf("type error\n");
                 break;
         }
     }
@@ -183,7 +263,7 @@ restore_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
     WASMBranchBlock *csp = frame->csp_bottom;
     uint32 csp_num = frame->csp - frame->csp_bottom;
 
-     for (i = 0; i < csp_num; i++,csp++) {
+    for (i = 0; i < csp_num; i++, csp++) {
         // uint8 *begin_addr;
         uint64 addr;
         fread(&addr, sizeof(uint64), 1, fp);
