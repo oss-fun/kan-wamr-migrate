@@ -82,6 +82,12 @@ wasm_interp_call_wasm(struct WASMModuleInstance *module_inst,
                       struct WASMFunctionInstance *function, uint32 argc,
                       uint32 argv[]);
 
+void
+wasm_interp_restore_wasm(struct WASMModuleInstance *module_inst,
+                         struct WASMExecEnv *exec_env,
+                         struct WASMFunctionInstance *function, uint32 argc,
+                         uint32 argv[]);
+
 #ifdef __cplusplus
 }
 #endif

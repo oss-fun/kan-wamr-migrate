@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "wasm_exec_env.h"
@@ -38,6 +39,7 @@ wasm_restore_frame(WASMExecEnv *exec_env)
     Frame_Info *info;
     uint32 func_idx, frame_size, all_cell_num;
     FILE *fp;
+    int i;
 
     fp = fopen("frame.img", "rb");
 
@@ -45,7 +47,7 @@ wasm_restore_frame(WASMExecEnv *exec_env)
 
     while (!feof(fp)) {
 
-        if ((fread(&func_idx, sizeof(int), 1, fp)) == 0) {
+        if ((fread(&func_idx, sizeof(uint32), 1, fp)) == 0) {
             break;
         }
 
@@ -73,6 +75,8 @@ wasm_restore_frame(WASMExecEnv *exec_env)
         else {
             // 関数からスタックサイズを計算し,ALLOC
             function = module_inst->functions + func_idx;
+            printf("restore func_idx: %d\n", func_idx);
+
             all_cell_num = (uint64)function->param_cell_num
                            + (uint64)function->local_cell_num
                            + (uint64)function->u.func->max_stack_cell_num
@@ -100,6 +104,7 @@ wasm_restore_frame(WASMExecEnv *exec_env)
     wasm_exec_env_set_cur_frame(exec_env, frame);
     wasm_dump_set_root_and_tail(root_info, tail_info);
     fclose(fp);
+    return tail_info->frame;
 }
 
 static void
@@ -202,12 +207,12 @@ restore_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
         switch (func->param_types[i]) {
             case VALUE_TYPE_I32:
             case VALUE_TYPE_F32:
-                fread(lp, sizeof(int32), 1, fp);
+                fread(lp, sizeof(uint32), 1, fp);
                 lp++;
                 break;
             case VALUE_TYPE_I64:
             case VALUE_TYPE_F64:
-                fread(lp, sizeof(int64), 1, fp);
+                fread(lp, sizeof(uint64), 1, fp);
                 lp += 2;
                 break;
             default:
@@ -219,12 +224,12 @@ restore_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
         switch (func->local_types[i]) {
             case VALUE_TYPE_I32:
             case VALUE_TYPE_F32:
-                fwrite(lp, sizeof(int32), 1, fp);
+                fread(lp, sizeof(uint32), 1, fp);
                 lp++;
                 break;
             case VALUE_TYPE_I64:
             case VALUE_TYPE_F64:
-                fwrite(lp, sizeof(int64), 1, fp);
+                fread(lp, sizeof(uint64), 1, fp);
                 lp += 2;
                 break;
             default:
@@ -255,7 +260,8 @@ restore_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
                 i += 2;
                 break;
             default:
-                printf("type error\n");
+                printf("type error in wasm_restore.c\n");
+                exit(1);
                 break;
         }
     }
@@ -290,6 +296,15 @@ restore_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
         }
         else {
             csp->frame_sp = addr + frame->sp_bottom;
+        }
+
+        // uint8 *frame_tsp;
+        fread(&addr, sizeof(uint64), 1, fp);
+        if (addr == -1) {
+            csp->frame_tsp = NULL;
+        }
+        else {
+            csp->frame_tsp = addr + frame->tsp_bottom;
         }
 
         // uint32 cell_num;

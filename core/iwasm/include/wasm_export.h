@@ -462,6 +462,25 @@ wasm_runtime_call_wasm(wasm_exec_env_t exec_env,
                        uint32_t argc, uint32_t argv[]);
 
 /**
+ * Restore
+ *
+ * @param exec_env the execution environment to call the function,
+ *   which must be created from wasm_create_exec_env()
+ * @param function the function to call
+ * @param argc the number of arguments
+ * @param argv the arguments. If the function has return value,
+ *   the first (or first two in case 64-bit return value) element of
+ *   argv stores the return value of the called WASM function after this
+ *   function returns.
+ *
+ * @return true if success, false otherwise and exception will be thrown,
+ *   the caller can call wasm_runtime_get_exception to get the exception
+ *   info.
+ */
+WASM_RUNTIME_API_EXTERN bool
+wasm_runtime_restore_wasm(wasm_exec_env_t exec_env, wasm_function_inst_t function, uint32_t argc, uint32_t argv[]);
+
+/**
  * Call the given WASM function of a WASM module instance with
  * provided results space and arguments (bytecode and AoT).
  *

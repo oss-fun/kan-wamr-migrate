@@ -482,7 +482,14 @@ wasm_runtime_call_wasm(WASMExecEnv *exec_env,
                        WASMFunctionInstanceCommon *function, uint32 argc,
                        uint32 argv[]);
 
+/* See wasm_export.h for description */
 WASM_RUNTIME_API_EXTERN bool
+wasm_runtime_restore_wasm(WASMExecEnv *exec_env,
+                          WASMFunctionInstanceCommon *function, uint32 argc,
+                          uint32 argv[]);
+
+WASM_RUNTIME_API_EXTERN
+bool
 wasm_runtime_call_wasm_a(WASMExecEnv *exec_env,
                          WASMFunctionInstanceCommon *function,
                          uint32 num_results, wasm_val_t *results,

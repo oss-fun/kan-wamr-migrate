@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "../interpreter/wasm_runtime.h"
@@ -57,8 +58,10 @@ wasm_dump_frame(WASMExecEnv *exec_env)
     WASMModuleInstance *module_inst =
         (WASMModuleInstance *)exec_env->module_inst;
     Frame_Info *info;
+    WASMFunctionInstance *function;
     uint32 func_idx;
     FILE *fp;
+    int i;
 
     if (!root_info) {
         printf("dump failed\n");
@@ -73,11 +76,13 @@ wasm_dump_frame(WASMExecEnv *exec_env)
             // 初期フレーム
             func_idx = -1;
             fwrite(&func_idx, sizeof(uint32), 1, fp);
+            printf("dump func_idx: %d\n", func_idx);
             fwrite(&info->all_cell_num, sizeof(uint32), 1, fp);
         }
         else {
             func_idx = info->frame->function - module_inst->functions;
             fwrite(&func_idx, sizeof(uint32), 1, fp);
+            printf("dump func_idx: %d\n", func_idx);
 
             dump_WASMInterpFrame(info->frame, exec_env, fp);
         }
@@ -128,12 +133,12 @@ dump_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
         switch (func->param_types[i]) {
             case VALUE_TYPE_I32:
             case VALUE_TYPE_F32:
-                fwrite(lp, sizeof(int32), 1, fp);
+                fwrite(lp, sizeof(uint32), 1, fp);
                 lp++;
                 break;
             case VALUE_TYPE_I64:
             case VALUE_TYPE_F64:
-                fwrite(lp, sizeof(int64), 1, fp);
+                fwrite(lp, sizeof(uint64), 1, fp);
                 lp += 2;
                 break;
             default:
@@ -145,12 +150,12 @@ dump_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
         switch (func->local_types[i]) {
             case VALUE_TYPE_I32:
             case VALUE_TYPE_F32:
-                fwrite(lp, sizeof(int32), 1, fp);
+                fwrite(lp, sizeof(uint32), 1, fp);
                 lp++;
                 break;
             case VALUE_TYPE_I64:
             case VALUE_TYPE_F64:
-                fwrite(lp, sizeof(int64), 1, fp);
+                fwrite(lp, sizeof(uint64), 1, fp);
                 lp += 2;
                 break;
             default:
@@ -186,7 +191,7 @@ dump_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
                 i += 2;
                 break;
             default:
-                printf("type error\n");
+                printf("type error in wasm_dump.c\n");
                 break;
         }
     }
@@ -223,6 +228,16 @@ dump_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
         }
         else {
             addr = csp->frame_sp - frame->sp_bottom;
+            fwrite(&addr, sizeof(uint64), 1, fp);
+        }
+
+        // uint8 *frame_tsp;
+        if (csp->frame_tsp == NULL) {
+            addr = -1;
+            fwrite(&addr, sizeof(uint64), 1, fp);
+        }
+        else {
+            addr = csp->frame_tsp - frame->tsp_bottom;
             fwrite(&addr, sizeof(uint64), 1, fp);
         }
 

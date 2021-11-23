@@ -28,7 +28,7 @@ if [ $? != 0 ];then
     exit 2
 fi
 
-cp -a basic ${OUT_DIR}
+cp -a migration ${OUT_DIR}
 
 echo -e "\n"
 

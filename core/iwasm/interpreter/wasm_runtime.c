@@ -1659,6 +1659,21 @@ wasm_call_function(WASMExecEnv *exec_env, WASMFunctionInstance *function,
 }
 
 bool
+wasm_restore(WASMExecEnv *exec_env, WASMFunctionInstance *function,
+             unsigned argc, uint32 argv[])
+{
+    WASMModuleInstance *module_inst =
+        (WASMModuleInstance *)exec_env->module_inst;
+
+    /* set thread handle and stack boundary */
+    wasm_exec_env_set_thread_info(exec_env);
+
+    wasm_interp_restore_wasm(module_inst, exec_env, function, argc, argv);
+    (void)clear_wasi_proc_exit_exception(module_inst);
+    return !wasm_get_exception(module_inst) ? true : false;
+}
+
+bool
 wasm_create_exec_env_and_call_function(WASMModuleInstance *module_inst,
                                        WASMFunctionInstance *func,
                                        unsigned argc, uint32 argv[])

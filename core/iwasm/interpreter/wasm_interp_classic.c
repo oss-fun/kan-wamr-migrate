@@ -2,6 +2,7 @@
  * Copyright (C) 2019 Intel Corporation.  All rights reserved.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
+#include <stdio.h>
 #include <signal.h>
 
 #include "wasm.h"
@@ -208,22 +209,43 @@ read_leb(const uint8 *buf, uint32 *p_offset, uint32 maxbits, bool sign)
 
 #define skip_leb(p) while (*p++ & 0x80)
 
-#define PUT_T64_TO_ADDR(addr, type)  \
-    do {                             \
-        *(uint8 *)(addr) = type;     \
-        *(uint8 *)(addr + 1) = type; \
+#define WASM_CHECK_TSP 1
+#if WASM_CHECK_TSP != 0
+#define CHECK_TSP(addr)                                         \
+    if (addr < frame->tsp_bottom && addr > frame->tsp_boundary) \
+    printf("tsp boundary error:%ld\n", addr - frame->tsp_bottom)
+
+#define CHECK_PREV_TSP(addr)                                              \
+    if (addr < prev_frame->tsp_bottom && addr > prev_frame->tsp_boundary) \
+    printf("prev tsp boundary error:%ld\n", addr - prev_frame->tsp_bottom)
+#else
+
+#define CHECK_TSP(addr) (void)0
+
+#define CHECK_PREV_TSP(addr) (void)0
+
+#endif
+
+#define PUT_T64_TO_ADDR(addr, type) \
+    do {                            \
+        CHECK_TSP(addr);            \
+        *(addr) = type;             \
+        CHECK_TSP(addr + 1);        \
+        *(addr + 1) = type;         \
     } while (0)
 
 #define PUSH_I32(value)                        \
     do {                                       \
         *(int32 *)frame_sp++ = (int32)(value); \
-        *(frame_tsp++) = VALUE_TYPE_I32;       \
+        CHECK_TSP(frame_tsp);                  \
+        *frame_tsp++ = VALUE_TYPE_I32;         \
     } while (0)
 
 #define PUSH_F32(value)                            \
     do {                                           \
         *(float32 *)frame_sp++ = (float32)(value); \
-        *(frame_tsp++) = VALUE_TYPE_F32;           \
+        CHECK_TSP(frame_tsp);                      \
+        *frame_tsp++ = VALUE_TYPE_F32;             \
     } while (0)
 
 #define PUSH_I64(value)                             \
@@ -284,9 +306,12 @@ read_leb(const uint8 *buf, uint32 *p_offset, uint32 maxbits, bool sign)
         /* copy arity values of block */                          \
         frame_sp = (frame_csp - 1)->frame_sp;                     \
         frame_tsp = (frame_csp - 1)->frame_tsp;                   \
+        if (frame_tsp == 0) {                                     \
+            printf("frame_tsp: zero\n");                             \
+        }                                                         \
         cell_num = (frame_csp - 1)->cell_num;                     \
         word_copy(frame_sp, frame_sp_old - cell_num, cell_num);   \
-        word_copy(frame_tsp, frame_tsp_old - cell_num, cell_num); \
+        char_copy(frame_tsp, frame_tsp_old - cell_num, cell_num); \
         frame_sp += cell_num;                                     \
         frame_tsp += cell_num;                                    \
     } while (0)
@@ -417,19 +442,22 @@ read_leb(const uint8 *buf, uint32 *p_offset, uint32 maxbits, bool sign)
         PUSH_##src_op_type(val2);                          \
     } while (0)
 
-#define DEF_OP_NUMERIC(src_type1, src_type2, src_op_type, operation)  \
-    do {                                                              \
-        frame_sp -= sizeof(src_type2) / sizeof(uint32);               \
-        frame_tsp -= sizeof(src_type2) / sizeof(uint32);              \
-        *(src_type1 *)(frame_sp - sizeof(src_type1) / sizeof(uint32)) \
-            operation## = *(src_type2 *)(frame_sp);                   \
-                                                                      \
-        *(frame_tsp - sizeof(src_type1) / sizeof(uint32)) =           \
-            VALUE_TYPE_##src_op_type;                                 \
-        if (sizeof(src_type2) / sizeof(uint32) == 2) {                \
-            *(frame_tsp - sizeof(src_type1) / sizeof(uint32) + 1) =   \
-                VALUE_TYPE_##src_op_type;                             \
-        }                                                             \
+#define DEF_OP_NUMERIC(src_type1, src_type2, src_op_type, operation)         \
+    do {                                                                     \
+        frame_sp -= sizeof(src_type2) / sizeof(uint32);                      \
+        frame_tsp -= sizeof(src_type2) / sizeof(uint32);                     \
+                                                                             \
+        *(src_type1 *)(frame_sp - sizeof(src_type1) / sizeof(uint32))        \
+            operation## = *(src_type2 *)(frame_sp);                          \
+                                                                             \
+        CHECK_TSP(frame_tsp - sizeof(src_type1) / sizeof(uint32));           \
+        *(uint8 *)(frame_tsp - sizeof(src_type1) / sizeof(uint32)) =         \
+            VALUE_TYPE_##src_op_type;                                        \
+        if (sizeof(src_type2) / sizeof(uint32) == 2) {                       \
+            CHECK_TSP(frame_tsp - sizeof(src_type1) / sizeof(uint32) + 1);   \
+            *(uint8 *)(frame_tsp - sizeof(src_type1) / sizeof(uint32) + 1) = \
+                VALUE_TYPE_##src_op_type;                                    \
+        }                                                                    \
     } while (0)
 
 #if WASM_CPU_SUPPORTS_UNALIGNED_ADDR_ACCESS != 0
@@ -449,19 +477,22 @@ read_leb(const uint8 *buf, uint32 *p_offset, uint32 maxbits, bool sign)
     } while (0)
 #endif
 
-#define DEF_OP_NUMERIC2(src_type1, src_type2, src_op_type, operation) \
-    do {                                                              \
-        frame_sp -= sizeof(src_type2) / sizeof(uint32);               \
-        frame_tsp -= sizeof(src_type2) / sizeof(uint32);              \
-        *(src_type1 *)(frame_sp - sizeof(src_type1) / sizeof(uint32)) \
-            operation## = (*(src_type2 *)(frame_sp) % 32);            \
-                                                                      \
-        *(frame_tsp - sizeof(src_type1) / sizeof(uint32)) =           \
-            VALUE_TYPE_##src_op_type;                                 \
-        if (sizeof(src_type2) / sizeof(uint32) == 2) {                \
-            *(frame_tsp - sizeof(src_type1) / sizeof(uint32) + 1) =   \
-                VALUE_TYPE_##src_op_type;                             \
-        }                                                             \
+#define DEF_OP_NUMERIC2(src_type1, src_type2, src_op_type, operation)        \
+    do {                                                                     \
+        frame_sp -= sizeof(src_type2) / sizeof(uint32);                      \
+        frame_tsp -= sizeof(src_type2) / sizeof(uint32);                     \
+                                                                             \
+        *(src_type1 *)(frame_sp - sizeof(src_type1) / sizeof(uint32))        \
+            operation## = (*(src_type2 *)(frame_sp) % 32);                   \
+                                                                             \
+        CHECK_TSP(frame_tsp - sizeof(src_type1) / sizeof(uint32));           \
+        *(uint8 *)(frame_tsp - sizeof(src_type1) / sizeof(uint32)) =         \
+            VALUE_TYPE_##src_op_type;                                        \
+        if (sizeof(src_type2) / sizeof(uint32) == 2) {                       \
+            CHECK_TSP(frame_tsp - sizeof(src_type1) / sizeof(uint32) + 1);   \
+            *(uint8 *)(frame_tsp - sizeof(src_type1) / sizeof(uint32) + 1) = \
+                VALUE_TYPE_##src_op_type;                                    \
+        }                                                                    \
     } while (0)
 
 #define DEF_OP_NUMERIC2_64(src_type1, src_type2, src_op_type, operation) \
@@ -511,9 +542,9 @@ TRUNC_FUNCTION(trunc_f64_to_i32, float64, uint32, int32)
 TRUNC_FUNCTION(trunc_f64_to_i64, float64, uint64, int64)
 
 static bool
-trunc_f32_to_int(WASMModuleInstance *module, uint32 *frame_sp, uint8 *frame_tsp,
-                 float32 src_min, float32 src_max, bool saturating, bool is_i32,
-                 bool is_sign)
+trunc_f32_to_int(WASMModuleInstance *module, WASMInterpFrame *frame,
+                 uint32 *frame_sp, uint8 *frame_tsp, float32 src_min,
+                 float32 src_max, bool saturating, bool is_i32, bool is_sign)
 {
     float32 src_value = POP_F32();
     uint64 dst_value_i64;
@@ -548,9 +579,9 @@ trunc_f32_to_int(WASMModuleInstance *module, uint32 *frame_sp, uint8 *frame_tsp,
 }
 
 static bool
-trunc_f64_to_int(WASMModuleInstance *module, uint32 *frame_sp, uint8 *frame_tsp,
-                 float64 src_min, float64 src_max, bool saturating, bool is_i32,
-                 bool is_sign)
+trunc_f64_to_int(WASMModuleInstance *module, WASMInterpFrame *frame,
+                 uint32 *frame_sp, uint8 *frame_tsp, float64 src_min,
+                 float64 src_max, bool saturating, bool is_i32, bool is_sign)
 {
     float64 src_value = POP_F64();
     uint64 dst_value_i64;
@@ -586,28 +617,28 @@ trunc_f64_to_int(WASMModuleInstance *module, uint32 *frame_sp, uint8 *frame_tsp,
 
 #define DEF_OP_TRUNC_F32(min, max, is_i32, is_sign)                        \
     do {                                                                   \
-        if (trunc_f32_to_int(module, frame_sp, frame_tsp, min, max, false, \
-                             is_i32, is_sign))                             \
+        if (trunc_f32_to_int(module, frame, frame_sp, frame_tsp, min, max, \
+                             false, is_i32, is_sign))                      \
             goto got_exception;                                            \
     } while (0)
 
 #define DEF_OP_TRUNC_F64(min, max, is_i32, is_sign)                        \
     do {                                                                   \
-        if (trunc_f64_to_int(module, frame_sp, frame_tsp, min, max, false, \
-                             is_i32, is_sign))                             \
+        if (trunc_f64_to_int(module, frame, frame_sp, frame_tsp, min, max, \
+                             false, is_i32, is_sign))                      \
             goto got_exception;                                            \
     } while (0)
 
-#define DEF_OP_TRUNC_SAT_F32(min, max, is_i32, is_sign)                     \
-    do {                                                                    \
-        (void)trunc_f32_to_int(module, frame_sp, frame_tsp, min, max, true, \
-                               is_i32, is_sign);                            \
+#define DEF_OP_TRUNC_SAT_F32(min, max, is_i32, is_sign)                      \
+    do {                                                                     \
+        (void)trunc_f32_to_int(module, frame, frame_sp, frame_tsp, min, max, \
+                               true, is_i32, is_sign);                       \
     } while (0)
 
-#define DEF_OP_TRUNC_SAT_F64(min, max, is_i32, is_sign)                     \
-    do {                                                                    \
-        (void)trunc_f64_to_int(module, frame_sp, frame_tsp, min, max, true, \
-                               is_i32, is_sign);                            \
+#define DEF_OP_TRUNC_SAT_F64(min, max, is_i32, is_sign)                      \
+    do {                                                                     \
+        (void)trunc_f64_to_int(module, frame, frame_sp, frame_tsp, min, max, \
+                               true, is_i32, is_sign);                       \
     } while (0)
 
 #define DEF_OP_CONVERT(dst_type, dst_op_type, src_type, src_op_type) \
@@ -767,6 +798,13 @@ word_copy(uint32 *dest, uint32 *src, unsigned num)
         *dest++ = *src++;
 }
 
+static inline void
+char_copy(uint8 *dest, uint8 *src, unsigned num)
+{
+    for (; num > 0; num--)
+        *dest++ = *src++;
+}
+
 static inline WASMInterpFrame *
 ALLOC_FRAME(WASMExecEnv *exec_env, uint32 size, WASMInterpFrame *prev_frame)
 {
@@ -868,11 +906,17 @@ wasm_interp_call_func_native(WASMModuleInstance *module_inst,
     if (cur_func->ret_cell_num == 1) {
         prev_frame->sp[0] = argv_ret[0];
         prev_frame->sp++;
+        prev_frame->tsp[0] = VALUE_TYPE_I32;
+        prev_frame->tsp++;
     }
     else if (cur_func->ret_cell_num == 2) {
         prev_frame->sp[0] = argv_ret[0];
         prev_frame->sp[1] = argv_ret[1];
+        prev_frame->tsp[0] = VALUE_TYPE_I64;
+        prev_frame->tsp[1] = VALUE_TYPE_I64;
+
         prev_frame->sp += 2;
+        prev_frame->tsp += 2;
     }
 
     FREE_FRAME(exec_env, frame);
@@ -1017,7 +1061,7 @@ get_global_addr(uint8 *global_data, WASMGlobalInstance *global)
 static bool sig_flag = false;
 
 void
-wasm_interp_signal(int signum)
+wasm_interp_sigint(int signum)
 {
     sig_flag = true;
 }
@@ -1055,13 +1099,15 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
     uint8 local_type, *global_addr;
     uint32 cache_index, type_index, cell_num;
     uint8 value_type;
+    uint64 migr_count = 0;
 
 #if WASM_ENABLE_LABELS_AS_VALUES != 0
 #define HANDLE_OPCODE(op) &&HANDLE_##op
     DEFINE_GOTO_TABLE(const void *, handle_table);
 #undef HANDLE_OPCODE
 #endif
-    signal(SIGINT, &wasm_interp_signal);
+
+    signal(SIGINT, &wasm_interp_sigint);
 
     if (restore_flag) {
         FILE *fp;
@@ -1084,13 +1130,10 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
                     fread(global_addr, sizeof(uint64), 1, fp);
                     break;
                 default:
-                    printf("type error\n");
+                    printf("type error:A\n");
                     break;
             }
         }
-
-        wasm_exec_env_set_cur_frame(exec_env, NULL);
-        FREE_FRAME(exec_env, prev_frame);
 
         // WASMInterpFrame *frame = NULL;
         frame = wasm_restore_frame(exec_env);
@@ -1098,9 +1141,10 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
         uint32 p_offset;
         // register uint8 *frame_ip = &opcode_IMPDEP;
         fread(&p_offset, sizeof(uint32), 1, fp);
-        frame_ip = wasm_get_func_code(cur_func) + p_offset;
+        frame_ip = wasm_get_func_code(frame->function) + p_offset;
 
         // register uint32 *frame_lp = NULL;
+        frame_lp = frame->lp;
         // register uint32 *frame_sp = NULL;
         fread(&p_offset, sizeof(uint32), 1, fp);
         frame_sp = frame->sp_bottom + p_offset;
@@ -1114,7 +1158,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
         frame_csp = frame->csp_bottom + p_offset;
 
         // uint8 *frame_ip_end = frame_ip + 1;
-        frame_ip_end = wasm_get_func_code_end(frame);
+        frame_ip_end = wasm_get_func_code_end(frame->function);
 
         // uint8 *else_addr, *end_addr, *maddr;
         fread(&p_offset, sizeof(uint32), 1, fp);
@@ -1125,6 +1169,9 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
 
         fread(&p_offset, sizeof(uint32), 1, fp);
         maddr = memory->memory_data + p_offset;
+        // SYNC_ALL_TO_FRAME();
+        cur_func = frame->function;
+        prev_frame = frame->prev_frame;
 
         fclose(fp);
         goto RESTORE_POINT;
@@ -1154,7 +1201,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
                         fwrite(global_addr, sizeof(uint64), 1, fp);
                         break;
                     default:
-                        printf("type error\n");
+                        printf("type error:B\n");
                         break;
                 }
             }
@@ -1197,10 +1244,19 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
             fwrite(&p_offset, sizeof(uint32), 1, fp);
 
             fclose(fp);
-            exit(1);
+            printf("migr_count:%ld\n", migr_count);
+            // exit(1);
+            restore_flag = true;
         }
     RESTORE_POINT:
+        migr_count++;
         opcode = *frame_ip++;
+        /*
+        if (restore_flag && migr_count < 2123 + 5) {
+            // printf("opcode: %x\n", opcode);
+            printf("frame_tsp: %p\n", frame_tsp);
+        }
+        */
         switch (opcode) {
 #else
     FETCH_OPCODE_AND_DISPATCH();
@@ -1334,6 +1390,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
                     frame_tsp -= cur_func->ret_cell_num;
                     for (i = 0; i < cur_func->ret_cell_num; i++) {
                         *prev_frame->sp++ = frame_sp[i];
+                        CHECK_PREV_TSP(prev_frame->tsp);
                         *prev_frame->tsp++ = frame_tsp[i];
                     }
                     goto return_func;
@@ -1395,6 +1452,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
                 frame_tsp -= cur_func->ret_cell_num;
                 for (i = 0; i < cur_func->ret_cell_num; i++) {
                     *prev_frame->sp++ = frame_sp[i];
+                    CHECK_PREV_TSP(prev_frame->tsp);
                     *prev_frame->tsp++ = frame_tsp[i];
                 }
                 goto return_func;
@@ -1528,6 +1586,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
                 frame_tsp--;
                 if (!cond) {
                     *(frame_sp - 1) = *frame_sp;
+                    CHECK_TSP(frame_tsp - 1);
                     *(frame_tsp - 1) = *frame_tsp;
                 }
                 HANDLE_OP_END();
@@ -1541,7 +1600,9 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
                 if (!cond) {
                     *(frame_sp - 2) = *frame_sp;
                     *(frame_sp - 1) = *(frame_sp + 1);
+                    CHECK_TSP(frame_tsp - 2);
                     *(frame_tsp - 2) = *frame_tsp;
+                    CHECK_TSP(frame_tsp - 1);
                     *(frame_tsp - 1) = *(frame_tsp + 1);
                 }
                 HANDLE_OP_END();
@@ -1563,7 +1624,9 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
                     if (!cond) {
                         *(frame_sp - 2) = *frame_sp;
                         *(frame_sp - 1) = *(frame_sp + 1);
+                        CHECK_TSP(frame_tsp - 2);
                         *(frame_tsp - 2) = *frame_tsp;
+                        CHECK_TSP(frame_tsp - 1);
                         *(frame_tsp - 1) = *(frame_tsp + 1);
                     }
                 }
@@ -1572,6 +1635,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
                     frame_tsp--;
                     if (!cond) {
                         *(frame_sp - 1) = *frame_sp;
+                        CHECK_TSP(frame_tsp - 1);
                         *(frame_tsp - 1) = *frame_tsp;
                     }
                 }
@@ -2128,7 +2192,8 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
             HANDLE_OP(WASM_OP_F32_CONST)
             {
                 uint8 *p_float = (uint8 *)frame_sp++;
-                *(frame_tsp++) = VALUE_TYPE_F32;
+                CHECK_TSP(frame_tsp - 1);
+                *frame_tsp++ = VALUE_TYPE_F32;
                 for (i = 0; i < sizeof(float32); i++)
                     *p_float++ = *frame_ip++;
                 HANDLE_OP_END();
@@ -2138,8 +2203,8 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
             {
                 uint8 *p_float = (uint8 *)frame_sp++;
                 frame_sp++;
-                *(frame_tsp++) = VALUE_TYPE_F64;
-                *(frame_tsp++) = VALUE_TYPE_F64;
+                *frame_tsp++ = VALUE_TYPE_F64;
+                *frame_tsp++ = VALUE_TYPE_F64;
 
                 for (i = 0; i < sizeof(float64); i++)
                     *p_float++ = *frame_ip++;
@@ -2675,14 +2740,17 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
                 HANDLE_OP_END();
             }
 
-            HANDLE_OP(WASM_OP_F32_NEG)
+            HANDLE_OP(WASM_OP_F32_NEG) // ???
             {
                 uint32 u32 = frame_sp[-1];
                 uint32 sign_bit = u32 & ((uint32)1 << 31);
-                if (sign_bit)
+                if (sign_bit) {
                     frame_sp[-1] = u32 & ~((uint32)1 << 31);
-                else
+                }
+                else {
                     frame_sp[-1] = u32 | ((uint32)1 << 31);
+                }
+                frame_tsp[-1] = VALUE_TYPE_F32;
                 HANDLE_OP_END();
             }
 
@@ -2798,8 +2866,10 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
                 else
                     PUT_I64_TO_ADDR(frame_sp - 2, (u64 | (((uint64)1) << 63)));
 
-                *(frame_tsp - 2) = VALUE_TYPE_I64;
-                *(frame_tsp - 1) = VALUE_TYPE_I64;
+                CHECK_TSP(frame_tsp - 2);
+                *(frame_tsp - 2) = VALUE_TYPE_F64;
+                CHECK_TSP(frame_tsp - 1);
+                *(frame_tsp - 1) = VALUE_TYPE_F64;
                 HANDLE_OP_END();
             }
 
@@ -2961,7 +3031,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
                 DEF_OP_TRUNC_F32(-9223373136366403584.0f,
                                  9223372036854775808.0f, false, true);
                 frame_sp++;
-                *(frame_tsp++) = VALUE_TYPE_I64;
+                frame_tsp++;
                 HANDLE_OP_END();
             }
 
@@ -2969,7 +3039,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
             {
                 DEF_OP_TRUNC_F32(-1.0f, 18446744073709551616.0f, false, false);
                 frame_sp++;
-                *(frame_tsp++) = VALUE_TYPE_I64;
+                frame_tsp++;
                 HANDLE_OP_END();
             }
 
@@ -3115,13 +3185,13 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
                                              9223372036854775808.0f, false,
                                              true);
                         frame_sp++;
-                        *(frame_tsp++) = VALUE_TYPE_I64;
+                        frame_tsp++;
                         break;
                     case WASM_OP_I64_TRUNC_SAT_U_F32:
                         DEF_OP_TRUNC_SAT_F32(-1.0f, 18446744073709551616.0f,
                                              false, false);
                         frame_sp++;
-                        *(frame_tsp++) = VALUE_TYPE_I64;
+                        frame_tsp++;
                         break;
                     case WASM_OP_I64_TRUNC_SAT_S_F64:
                         DEF_OP_TRUNC_SAT_F64(-9223372036854777856.0,
@@ -3727,6 +3797,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
                 frame_ip = frame->ip;
                 frame_sp = frame->sp;
                 frame_csp = frame->csp;
+                frame_tsp = frame->tsp;
                 goto call_func_from_entry;
             }
 
@@ -3883,9 +3954,6 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
                 printf("tsp malloc error\n");
                 // exit(1);
             }
-            else {
-                printf("tsp malloc success\n");
-            }
             frame_tsp = frame->tsp_bottom = frame->tsp;
             frame->tsp_boundary =
                 frame->tsp_bottom + cur_wasm_func->max_stack_cell_num;
@@ -3977,9 +4045,6 @@ wasm_interp_call_wasm(WASMModuleInstance *module_inst, WASMExecEnv *exec_env,
         printf("tsp malloc error\n");
         // exit(1);
     }
-    else {
-        printf("tsp malloc success\n");
-    }
     frame->tsp_bottom = frame->tsp;
     frame->tsp_boundary = frame->tsp_bottom + all_cell_num;
 
@@ -4013,6 +4078,37 @@ wasm_interp_call_wasm(WASMModuleInstance *module_inst, WASMExecEnv *exec_env,
         wasm_interp_call_func_bytecode(module_inst, exec_env, function, frame,
                                        false);
     }
+
+    /* Output the return value to the caller */
+    if (!wasm_get_exception(module_inst)) {
+        for (i = 0; i < function->ret_cell_num; i++) {
+            argv[i] = *(frame->sp + i - function->ret_cell_num);
+        }
+    }
+    else {
+#if WASM_ENABLE_DUMP_CALL_STACK != 0
+        wasm_interp_dump_call_stack(exec_env);
+#endif
+        LOG_DEBUG("meet an exception %s", wasm_get_exception(module_inst));
+    }
+
+    wasm_exec_env_set_cur_frame(exec_env, prev_frame);
+    FREE_FRAME(exec_env, frame);
+}
+
+void
+wasm_interp_restore_wasm(WASMModuleInstance *module_inst, WASMExecEnv *exec_env,
+                         WASMFunctionInstance *function, uint32 argc,
+                         uint32 argv[])
+{
+    WASMRuntimeFrame *prev_frame = wasm_exec_env_get_cur_frame(exec_env);
+    WASMInterpFrame *frame, *outs_area;
+    unsigned i;
+
+    frame = wasm_exec_env_wasm_stack_top(exec_env);
+
+    wasm_interp_call_func_bytecode(module_inst, exec_env, function, frame,
+                                   true);
 
     /* Output the return value to the caller */
     if (!wasm_get_exception(module_inst)) {

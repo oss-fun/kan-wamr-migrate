@@ -4,9 +4,9 @@
 cmake_minimum_required (VERSION 2.8)
 
 if (NOT WAMR_BUILD_PLATFORM STREQUAL "windows")
-  project (basic)
+  project (migration)
 else()
-  project (basic C ASM)
+  project (migration C ASM)
   enable_language (ASM_MASM)
 endif()
 
@@ -78,10 +78,10 @@ add_library(vmlib ${WAMR_RUNTIME_LIB_SOURCE})
 include_directories(${CMAKE_CURRENT_LIST_DIR}/src)
 include (${SHARED_DIR}/utils/uncommon/shared_uncommon.cmake)
 
-add_executable (basic src/main.c src/native_impl.c ${UNCOMMON_SHARED_SOURCE})
+add_executable (migration src/main.c src/native_impl.c ${UNCOMMON_SHARED_SOURCE})
 
 if (APPLE)
-  target_link_libraries (basic vmlib -lm -ldl -lpthread)
+  target_link_libraries (migration vmlib -lm -ldl -lpthread)
 else ()
-  target_link_libraries (basic vmlib -lm -ldl -lpthread -lrt)
+  target_link_libraries (migration vmlib -lm -ldl -lpthread -lrt)
 endif ()

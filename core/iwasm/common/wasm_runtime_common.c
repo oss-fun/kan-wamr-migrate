@@ -1190,6 +1190,26 @@ wasm_runtime_call_wasm(WASMExecEnv *exec_env,
     return ret;
 }
 
+bool
+wasm_runtime_restore_wasm(WASMExecEnv *exec_env,
+                          WASMFunctionInstanceCommon *function, uint32 argc,
+                          uint32 argv[])
+{
+    bool ret = false;
+
+    if (!wasm_runtime_exec_env_check(exec_env)) {
+        LOG_ERROR("Invalid exec env stack info.");
+        return false;
+    }
+
+#if WASM_ENABLE_INTERP != 0
+    if (exec_env->module_inst->module_type == Wasm_Module_Bytecode)
+        ret = wasm_restore(exec_env, function, argc, argv);
+#endif
+
+    return ret;
+}
+
 static uint32
 parse_args_to_uint32_array(WASMType *type, uint32 num_args, wasm_val_t *args,
                            uint32 *out_argv)
