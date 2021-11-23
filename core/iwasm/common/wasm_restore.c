@@ -43,13 +43,12 @@ wasm_restore_frame(WASMExecEnv *exec_env)
 
     fp = fopen("frame.img", "rb");
 
-    info = malloc(sizeof(Frame_Info));
-
     while (!feof(fp)) {
-
         if ((fread(&func_idx, sizeof(uint32), 1, fp)) == 0) {
             break;
         }
+
+        info = malloc(sizeof(Frame_Info));
 
         if (func_idx == -1) {
             // 初期フレームのスタックサイズをreadしてALLOC
@@ -90,13 +89,18 @@ wasm_restore_frame(WASMExecEnv *exec_env)
             frame->function = function;
             restore_WASMInterpFrame(frame, exec_env, fp);
 
+            printf("prev_frame:%p\n", prev_frame);
+
             info->frame = prev_frame = frame;
         }
 
         if (root_info == NULL) {
+            info->next = info->prev = NULL;
             root_info = tail_info = info;
         }
         else {
+            info->next = NULL;
+            info->prev = tail_info;
             tail_info->next = info;
             tail_info = tail_info->next;
         }

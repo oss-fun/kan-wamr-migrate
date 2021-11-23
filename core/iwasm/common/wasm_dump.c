@@ -76,7 +76,6 @@ wasm_dump_frame(WASMExecEnv *exec_env)
             // 初期フレーム
             func_idx = -1;
             fwrite(&func_idx, sizeof(uint32), 1, fp);
-            printf("dump func_idx: %d\n", func_idx);
             fwrite(&info->all_cell_num, sizeof(uint32), 1, fp);
         }
         else {
@@ -114,6 +113,7 @@ dump_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
     // uint8 *tsp;
     uint32 tsp_offset = frame->tsp - frame->tsp_bottom;
     fwrite(&tsp_offset, sizeof(uint32), 1, fp);
+
 
     // WASMBranchBlock *csp_bottom;
     // WASMBranchBlock *csp_boundary;
@@ -171,6 +171,7 @@ dump_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
     }
     */
     fwrite(frame->tsp_bottom, sizeof(uint8), tsp_offset, fp);
+    
     /*
     uint32 *sp = frame->sp_bottom;
     while (sp != frame->sp) {
@@ -198,6 +199,7 @@ dump_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
 
     WASMBranchBlock *csp = frame->csp_bottom;
     uint32 csp_num = frame->csp - frame->csp_bottom;
+    
 
     for (i = 0; i < csp_num; i++, csp++) {
         // uint8 *begin_addr;

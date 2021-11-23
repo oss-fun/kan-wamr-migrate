@@ -307,7 +307,7 @@ read_leb(const uint8 *buf, uint32 *p_offset, uint32 maxbits, bool sign)
         frame_sp = (frame_csp - 1)->frame_sp;                     \
         frame_tsp = (frame_csp - 1)->frame_tsp;                   \
         if (frame_tsp == 0) {                                     \
-            printf("frame_tsp: zero\n");                             \
+            printf("frame_tsp: zero\n");                          \
         }                                                         \
         cell_num = (frame_csp - 1)->cell_num;                     \
         word_copy(frame_sp, frame_sp_old - cell_num, cell_num);   \
@@ -1172,7 +1172,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
         // SYNC_ALL_TO_FRAME();
         cur_func = frame->function;
         prev_frame = frame->prev_frame;
-
+        
         fclose(fp);
         goto RESTORE_POINT;
     }
@@ -1245,8 +1245,8 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
 
             fclose(fp);
             printf("migr_count:%ld\n", migr_count);
-            // exit(1);
-            restore_flag = true;
+            exit(1);
+            // restore_flag = true;
         }
     RESTORE_POINT:
         migr_count++;
