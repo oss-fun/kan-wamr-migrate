@@ -4232,6 +4232,11 @@ fail:
     return ret;
 }
 
+
+void wasm_runtime_set_native_handler(void (*func)(void)){
+    wasm_interp_set_native_handler(func);
+}
+
 void
 wasm_runtime_show_app_heap_corrupted_prompt()
 {

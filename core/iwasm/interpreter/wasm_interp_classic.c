@@ -1059,6 +1059,11 @@ get_global_addr(uint8 *global_data, WASMGlobalInstance *global)
 }
 
 static bool sig_flag = false;
+static void (*native_handler)(void) = NULL;
+
+void wasm_interp_set_native_handler(void (*func)(void)){
+    native_handler = func;
+}
 
 void
 wasm_interp_sigint(int signum)
@@ -1172,7 +1177,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
         // SYNC_ALL_TO_FRAME();
         cur_func = frame->function;
         prev_frame = frame->prev_frame;
-        
+
         fclose(fp);
         goto RESTORE_POINT;
     }
@@ -1242,6 +1247,10 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
             fwrite(&p_offset, sizeof(uint32), 1, fp);
             p_offset = maddr - memory->memory_data;
             fwrite(&p_offset, sizeof(uint32), 1, fp);
+
+            if(native_handler!=NULL){
+                (*native_handler)();
+            }
 
             fclose(fp);
             printf("migr_count:%ld\n", migr_count);

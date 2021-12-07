@@ -952,6 +952,9 @@ wasm_externref_ref2obj(uint32_t externref_idx, void **p_extern_obj);
 WASM_RUNTIME_API_EXTERN bool
 wasm_externref_retain(uint32_t externref_idx);
 
+WASM_RUNTIME_API_EXTERN void
+wasm_runtime_set_native_handler(void (*func)(void));
+
 /**
  * dump the call stack
  *

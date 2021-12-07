@@ -846,6 +846,10 @@ wasm_runtime_invoke_c_api_native(WASMModuleInstanceCommon *module_inst,
                                  uint32 argc, uint32 *argv, bool with_env,
                                  void *wasm_c_api_env);
 
+/* See wasm_export.h for description */
+WASM_RUNTIME_API_EXTERN void
+wasm_runtime_set_native_handler(void (*func)(void));
+
 void
 wasm_runtime_show_app_heap_corrupted_prompt();
 
