@@ -8,6 +8,8 @@ core/deps/**
 core/shared/mem-alloc/tlsf
 core/app-framework/wgl
 
+*.img
+
 wamr-sdk/out/
 wamr-sdk/runtime/build_runtime_sdk/
 test-tools/host-tool/bin/

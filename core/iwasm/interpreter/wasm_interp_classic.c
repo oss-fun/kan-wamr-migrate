@@ -1254,7 +1254,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
 
             fclose(fp);
             printf("migr_count:%ld\n", migr_count);
-            exit(1);
+            exit(0);
             // restore_flag = true;
         }
     RESTORE_POINT:
