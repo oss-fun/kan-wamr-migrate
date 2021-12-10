@@ -40,7 +40,7 @@ wasm_restore_frame(WASMExecEnv *exec_env, char *img_dir)
     uint32 func_idx, frame_size, all_cell_num;
     FILE *fp;
     int i;
-    char *dir;
+    char *dir = malloc(strlen(img_dir)+strlen("frame.img"));
     dir = strcpy(dir, img_dir);
     dir = strcat(dir, "frame.img");
     fp = fopen(dir, "rb");

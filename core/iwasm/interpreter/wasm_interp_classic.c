@@ -1134,7 +1134,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
 
     if (restore_flag) {
         FILE *fp;
-        char *dir;
+        char *dir = malloc(strlen(img_dir)+strlen("interp.img"));
         dir = strcpy(dir, img_dir);
         dir = strcat(dir, "interp.img");
         fp = fopen(dir, "rb");
