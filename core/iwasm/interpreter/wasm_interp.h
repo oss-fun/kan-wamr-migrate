@@ -88,7 +88,7 @@ wasm_interp_restore_wasm(struct WASMModuleInstance *module_inst,
                          struct WASMFunctionInstance *function, uint32 argc,
                          uint32 argv[]);
 void
-wasm_interp_set_restore_info(void (*func)(void), char *dir);
+wasm_interp_set_cr_info(void (*func)(void), char *dir);
 
 #ifdef __cplusplus
 }

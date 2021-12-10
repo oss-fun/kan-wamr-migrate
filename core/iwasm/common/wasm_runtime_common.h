@@ -848,7 +848,7 @@ wasm_runtime_invoke_c_api_native(WASMModuleInstanceCommon *module_inst,
 
 /* See wasm_export.h for description */
 WASM_RUNTIME_API_EXTERN void
-wasm_runtime_set_restore_info(void (*func)(void), char *dir);
+wasm_runtime_set_cr_info(void (*func)(void), char *dir);
 
 void
 wasm_runtime_show_app_heap_corrupted_prompt();

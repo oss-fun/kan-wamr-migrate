@@ -1064,10 +1064,13 @@ static void (*native_handler)(void) = NULL;
 static char *img_dir = NULL;
 
 void
-wasm_interp_set_restore_info(void (*func)(void), char *dir)
+wasm_interp_set_cr_info(void (*func)(void), char *dir)
 {
     native_handler = func;
 
+    if (dir == NULL)
+        return;
+        
     for (int i = 0;; i++) {
         if (dir[i] == '\0') {
             if (i == 0) {
@@ -1134,7 +1137,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
 
     if (restore_flag) {
         FILE *fp;
-        char *dir = malloc(strlen(img_dir)+strlen("interp.img"));
+        char *dir = malloc(strlen(img_dir) + strlen("interp.img"));
         dir = strcpy(dir, img_dir);
         dir = strcat(dir, "interp.img");
         fp = fopen(dir, "rb");
