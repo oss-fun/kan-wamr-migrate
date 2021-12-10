@@ -4233,7 +4233,7 @@ fail:
 }
 
 void
-wasm_runtime_set_cr_info(void (*func)(void), char *dir)
+wasm_runtime_set_cr_info(void (*func)(void), const char *dir)
 {
     wasm_interp_set_cr_info(func, dir);
 }
