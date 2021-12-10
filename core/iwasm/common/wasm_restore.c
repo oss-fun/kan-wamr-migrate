@@ -30,7 +30,7 @@ ALLOC_FRAME(WASMExecEnv *exec_env, uint32 size, WASMInterpFrame *prev_frame)
 }
 
 WASMInterpFrame *
-wasm_restore_frame(WASMExecEnv *exec_env)
+wasm_restore_frame(WASMExecEnv *exec_env, char *img_dir)
 {
     WASMModuleInstance *module_inst =
         (WASMModuleInstance *)exec_env->module_inst;
@@ -40,8 +40,10 @@ wasm_restore_frame(WASMExecEnv *exec_env)
     uint32 func_idx, frame_size, all_cell_num;
     FILE *fp;
     int i;
-
-    fp = fopen("frame.img", "rb");
+    char *dir;
+    dir = strcpy(dir, img_dir);
+    dir = strcat(dir, "frame.img");
+    fp = fopen(dir, "rb");
 
     while (!feof(fp)) {
         if ((fread(&func_idx, sizeof(uint32), 1, fp)) == 0) {

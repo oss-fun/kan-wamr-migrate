@@ -953,7 +953,7 @@ WASM_RUNTIME_API_EXTERN bool
 wasm_externref_retain(uint32_t externref_idx);
 
 WASM_RUNTIME_API_EXTERN void
-wasm_runtime_set_native_handler(void (*func)(void));
+wasm_runtime_set_restore_info(void (*func)(void),char *dir);
 
 /**
  * dump the call stack

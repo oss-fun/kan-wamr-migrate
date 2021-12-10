@@ -4,6 +4,7 @@
  */
 #include <stdio.h>
 #include <signal.h>
+#include <string.h>
 
 #include "wasm.h"
 #include "wasm_interp.h"
@@ -1060,9 +1061,26 @@ get_global_addr(uint8 *global_data, WASMGlobalInstance *global)
 
 static bool sig_flag = false;
 static void (*native_handler)(void) = NULL;
+static char *img_dir = NULL;
 
-void wasm_interp_set_native_handler(void (*func)(void)){
+void
+wasm_interp_set_restore_info(void (*func)(void), char *dir)
+{
     native_handler = func;
+
+    for (int i = 0;; i++) {
+        if (dir[i] == '\0') {
+            if (i == 0) {
+                printf("img path error.\n");
+                exit(1);
+            }
+            if (dir[i - 1] != '/')
+                dir = strcat(dir, "/");
+
+            break;
+        }
+    }
+    img_dir = dir;
 }
 
 void
@@ -1116,7 +1134,11 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
 
     if (restore_flag) {
         FILE *fp;
-        fp = fopen("interp.img", "rb");
+        char *dir;
+        dir = strcpy(dir, img_dir);
+        dir = strcat(dir, "interp.img");
+        fp = fopen(dir, "rb");
+
         // WASMMemoryInstance *memory = module->default_memory;
         fread(memory->memory_data, sizeof(uint8),
               memory->num_bytes_per_page * memory->cur_page_count, fp);
@@ -1141,7 +1163,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
         }
 
         // WASMInterpFrame *frame = NULL;
-        frame = wasm_restore_frame(exec_env);
+        frame = wasm_restore_frame(exec_env, img_dir);
 
         uint32 p_offset;
         // register uint8 *frame_ip = &opcode_IMPDEP;
@@ -1248,7 +1270,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
             p_offset = maddr - memory->memory_data;
             fwrite(&p_offset, sizeof(uint32), 1, fp);
 
-            if(native_handler!=NULL){
+            if (native_handler != NULL) {
                 (*native_handler)();
             }
 
