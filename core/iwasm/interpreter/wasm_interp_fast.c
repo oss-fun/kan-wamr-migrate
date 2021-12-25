@@ -1090,6 +1090,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
 #if WASM_CPU_SUPPORTS_UNALIGNED_ADDR_ACCESS == 0
         frame_ip++;
 #endif
+        printf("opcode:%X\n", opcode);
         switch (opcode) {
 #else
     goto *handle_table[WASM_OP_IMPDEP];

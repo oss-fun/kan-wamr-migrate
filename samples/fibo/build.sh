@@ -17,18 +17,18 @@ mkdir ${OUT_DIR}
 mkdir ${OUT_DIR}/wasm-apps
 
 
-echo "#####################build basic project"
+echo "#####################build fibo project"
 cd ${CURR_DIR}
 mkdir -p cmake_build
 cd cmake_build
-cmake .. 
+cmake ..
 make
 if [ $? != 0 ];then
-    echo "BUILD_FAIL basic exit as $?\n"
+    echo "BUILD_FAIL fibo exit as $?\n"
     exit 2
 fi
 
-cp -a basic ${OUT_DIR}
+cp -a fibo ${OUT_DIR}
 
 echo -e "\n"
 
@@ -43,12 +43,10 @@ OUT_FILE=${i%.*}.wasm
 
 # use WAMR SDK to build out the .wasm binary
 /opt/wasi-sdk/bin/clang     \
-        --target=wasm32-wasi -O0 -z stack-size=4096 -Wl,--initial-memory=65536 \
+        --target=wasm32-wasi -O3 -z stack-size=4096 -Wl,--initial-memory=65536 \
         --sysroot=/opt/wasi-sdk/share/wasi-sysroot  \
         -Wl,--strip-all,--no-entry \
-        -Wl,--export=generate_float \
-        -Wl,--export=float_to_string \
-        -Wl,--export=calculate\
+        -Wl,--export=fibonacci \
         -Wl,--allow-undefined \
         -o ${OUT_DIR}/wasm-apps/${OUT_FILE} ${APP_SRC}
 

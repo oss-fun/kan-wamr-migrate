@@ -1406,7 +1406,7 @@ aot_call_function(WASMExecEnv *exec_env, AOTFunctionInstance *function,
 
     /* set thread handle and stack boundary */
     wasm_exec_env_set_thread_info(exec_env);
-
+    printf("start\n");
     if (ext_ret_count > 0) {
         uint32 cell_num = 0, i;
         uint8 *ext_ret_types = func_type->types + func_type->param_count + 1;
@@ -1512,10 +1512,10 @@ aot_call_function(WASMExecEnv *exec_env, AOTFunctionInstance *function,
             return false;
         }
 #endif
-
+        printf("internalA:%d\n", argv[0]);
         ret = invoke_native_internal(exec_env, function->u.func.func_ptr,
                                      func_type, NULL, NULL, argv, argc, argv);
-
+        printf("internalB:%d\n", argv[0]);
         if (clear_wasi_proc_exit_exception(module_inst))
             ret = true;
 

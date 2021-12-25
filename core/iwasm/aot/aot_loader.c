@@ -2846,7 +2846,6 @@ aot_convert_wasm_module(WASMModule *wasm_module, char *error_buf,
     AOTModule *aot_module;
     AOTCompOption option = { 0 };
     char *aot_last_error;
-
     comp_data = aot_create_comp_data(wasm_module);
     if (!comp_data) {
         aot_last_error = aot_get_last_error();

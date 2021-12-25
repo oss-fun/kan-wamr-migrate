@@ -8,13 +8,6 @@
 #include "bh_read_file.h"
 #include "bh_getopt.h"
 
-int
-intToStr(int x, char *str, int str_len, int digit);
-int
-get_pow(int x, int y);
-int32_t
-calculate_native(int32_t n, int32_t func1, int32_t func2);
-
 void
 print_usage(void)
 {
@@ -33,20 +26,30 @@ main(int argc, char *argv_main[])
     wasm_module_t module = NULL;
     wasm_module_inst_t module_inst = NULL;
     wasm_exec_env_t exec_env = NULL;
-    uint32 buf_size, stack_size = 8092*1024, heap_size = 8092;
+    uint32 buf_size, stack_size = 8092 * 1024, heap_size = 8092;
     wasm_function_inst_t func = NULL;
     wasm_function_inst_t func2 = NULL;
     char *native_buffer = NULL;
     uint32_t wasm_buffer = 0;
+    uint32_t fibo_n = 10;
+    bool restore_flag = false;
+    char *img_dir = "./";
 
     RuntimeInitArgs init_args;
     memset(&init_args, 0, sizeof(RuntimeInitArgs));
 
-    while ((opt = getopt(argc, argv_main, "hf:")) != -1) {
+    while ((opt = getopt(argc, argv_main, "hrf:n:")) != -1) {
         switch (opt) {
             case 'f':
                 wasm_path = optarg;
                 break;
+            case 'r':
+                restore_flag = true;
+                break;
+            case 'n':
+                fibo_n = atoi(optarg);
+                break;
+
             case 'h':
                 print_usage();
                 return 0;
@@ -66,30 +69,9 @@ main(int argc, char *argv_main[])
     // For the function signature specifications, goto the link:
     // https://github.com/bytecodealliance/wasm-micro-runtime/blob/main/doc/export_native_api.md
 
-    static NativeSymbol native_symbols[] = {
-        {
-            "intToStr", // the name of WASM function name
-            intToStr,   // the native function pointer
-            "(i*~i)i",  // the function prototype signature, avoid to use i32
-            NULL        // attachment is NULL
-        },
-        {
-            "get_pow", // the name of WASM function name
-            get_pow,   // the native function pointer
-            "(ii)i",   // the function prototype signature, avoid to use i32
-            NULL       // attachment is NULL
-        },
-        { "calculate_native", calculate_native, "(iii)i", NULL }
-    };
-
     init_args.mem_alloc_type = Alloc_With_Pool;
     init_args.mem_alloc_option.pool.heap_buf = global_heap_buf;
     init_args.mem_alloc_option.pool.heap_size = sizeof(global_heap_buf);
-
-    // Native symbols need below registration phase
-    init_args.n_native_symbols = sizeof(native_symbols) / sizeof(NativeSymbol);
-    init_args.native_module_name = "env";
-    init_args.native_symbols = native_symbols;
 
     if (!wasm_runtime_full_init(&init_args)) {
         printf("Init runtime environment failed.\n");
@@ -124,7 +106,7 @@ main(int argc, char *argv_main[])
     }
 
     uint32 argv[1];
-    uint32 num = 40;
+    uint32 num = fibo_n;
     argv[0] = num;
 
     if (!(func =
@@ -133,11 +115,20 @@ main(int argc, char *argv_main[])
         goto fail;
     }
 
-    // pass 4 elements for function arguments
-    if (!wasm_runtime_call_wasm(exec_env, func, 1, argv)) {
-        printf("call wasm function fibonacci failed. %s\n",
-               wasm_runtime_get_exception(module_inst));
-        goto fail;
+    if (restore_flag) {
+        if (!wasm_runtime_restore_wasm(exec_env, func, 1, argv)) {
+            printf("restore wasm function fibonacci failed. %s\n",
+                   wasm_runtime_get_exception(module_inst));
+            goto fail;
+        }
+    }
+    else {
+        // pass 4 elements for function arguments
+        if (!wasm_runtime_call_wasm(exec_env, func, 1, argv)) {
+            printf("call wasm function fibonacci failed. %s\n",
+                   wasm_runtime_get_exception(module_inst));
+            goto fail;
+        }
     }
 
     uint32 ret_val;
@@ -145,59 +136,6 @@ main(int argc, char *argv_main[])
     printf("Native finished calling wasm function fibonacci(), returned a "
            "fibonacci[%d]: %d\n",
            num, ret_val);
-
-    goto fail;
-
-    // Next we will pass a buffer to the WASM function
-    uint32 argv2[4];
-
-    // must allocate buffer from wasm instance memory space (never use pointer
-    // from host runtime)
-    wasm_buffer =
-        wasm_runtime_module_malloc(module_inst, 100, (void **)&native_buffer);
-
-    memcpy(argv2, &ret_val, sizeof(float)); // the first argument
-    argv2[1] = wasm_buffer; // the second argument is the wasm buffer address
-    argv2[2] = 100;         //  the third argument is the wasm buffer size
-    argv2[3] = 3; //  the last argument is the digits after decimal point for
-                  //  converting float to string
-
-    if (!(func2 = wasm_runtime_lookup_function(module_inst, "float_to_string",
-                                               NULL))) {
-        printf(
-            "The wasm function float_to_string wasm function is not found.\n");
-        goto fail;
-    }
-
-    if (wasm_runtime_call_wasm(exec_env, func2, 4, argv2)) {
-        printf("Native finished calling wasm function: float_to_string, "
-               "returned a formatted string: %s\n",
-               native_buffer);
-    }
-    else {
-        printf("call wasm function float_to_string failed. error: %s\n",
-               wasm_runtime_get_exception(module_inst));
-        goto fail;
-    }
-
-    wasm_function_inst_t func3 =
-        wasm_runtime_lookup_function(module_inst, "calculate", NULL);
-    if (!func3) {
-        printf("The wasm function calculate is not found.\n");
-        goto fail;
-    }
-
-    uint32_t argv3[1] = { 3 };
-    if (wasm_runtime_call_wasm(exec_env, func3, 1, argv3)) {
-        uint32_t result = *(uint32_t *)argv3;
-        printf("Native finished calling wasm function: calculate, return: %d\n",
-               result);
-    }
-    else {
-        printf("call wasm function calculate failed. error: %s\n",
-               wasm_runtime_get_exception(module_inst));
-        goto fail;
-    }
 
 fail:
     if (exec_env)

@@ -1126,7 +1126,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
     uint8 local_type, *global_addr;
     uint32 cache_index, type_index, cell_num;
     uint8 value_type;
-    uint64 migr_count = 0;
+    uint64 step = 0;
 
 #if WASM_ENABLE_LABELS_AS_VALUES != 0
 #define HANDLE_OPCODE(op) &&HANDLE_##op
@@ -1138,8 +1138,13 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
 
     if (restore_flag) {
         FILE *fp;
-        char *dir = malloc(strlen(img_dir) + strlen("interp.img") + 1);
-        dir = strcpy(dir, img_dir);
+
+        char *dir = malloc((img_dir == NULL ? 0 : strlen(img_dir))
+                           + strlen("interp.img") + 1);
+        if (img_dir != NULL) {
+            dir = strcpy(dir, img_dir);
+        }
+
         dir = strcat(dir, "interp.img");
         fp = fopen(dir, "rb");
         printf("%s\n", dir);
@@ -1280,19 +1285,15 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
             }
 
             fclose(fp);
-            printf("migr_count:%ld\n", migr_count);
+            printf("step:%ld\n", step);
             exit(0);
             // restore_flag = true;
         }
     RESTORE_POINT:
-        migr_count++;
+        step++;
         opcode = *frame_ip++;
-        /*
-        if (restore_flag && migr_count < 2123 + 5) {
-            // printf("opcode: %x\n", opcode);
-            printf("frame_tsp: %p\n", frame_tsp);
-        }
-        */
+        // printf("step:%d\n", step);
+
         switch (opcode) {
 #else
     FETCH_OPCODE_AND_DISPATCH();

@@ -671,7 +671,6 @@ wasm_runtime_load(const uint8 *buf, uint32 size, char *error_buf,
                   uint32 error_buf_size)
 {
     WASMModuleCommon *module_common = NULL;
-
     if (get_package_type(buf, size) == Wasm_Module_Bytecode) {
 #if WASM_ENABLE_AOT != 0 && WASM_ENABLE_JIT != 0
         AOTModule *aot_module;
@@ -697,6 +696,7 @@ wasm_runtime_load(const uint8 *buf, uint32 size, char *error_buf,
     }
     else if (get_package_type(buf, size) == Wasm_Module_AoT) {
 #if WASM_ENABLE_AOT != 0
+        printf("AOT_LOAD\n");
         module_common = (WASMModuleCommon *)aot_load_from_aot_file(
             buf, size, error_buf, error_buf_size);
         return register_module_with_null_name(module_common, error_buf,
