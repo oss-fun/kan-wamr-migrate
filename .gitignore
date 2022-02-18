@@ -9,7 +9,7 @@ core/shared/mem-alloc/tlsf
 core/app-framework/wgl
 
 *.img
-
+*.dat
 wamr-sdk/out/
 wamr-sdk/runtime/build_runtime_sdk/
 test-tools/host-tool/bin/
