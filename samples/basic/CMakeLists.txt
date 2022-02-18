@@ -6,7 +6,7 @@ cmake_minimum_required (VERSION 2.8)
 if (NOT WAMR_BUILD_PLATFORM STREQUAL "windows")
   project (basic)
 else()
-  project (basic C ASM)
+  project (basic CXX ASM)
   enable_language (ASM_MASM)
 endif()
 
