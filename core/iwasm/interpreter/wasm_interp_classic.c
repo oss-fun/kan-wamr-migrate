@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <signal.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "wasm.h"
 #include "wasm_interp.h"
@@ -857,6 +858,7 @@ wasm_interp_call_func_native(WASMModuleInstance *module_inst,
     uint32 argv_ret[2];
     char buf[128];
     bool ret;
+    pthread_t th;
 
     if (!(frame = ALLOC_FRAME(exec_env,
                               wasm_interp_interp_frame_size(local_cell_num),
@@ -1093,6 +1095,8 @@ wasm_interp_sigint(int signum)
     sig_flag = true;
 }
 
+bool done_flag;
+
 static void
 wasm_interp_call_func_bytecode(WASMModuleInstance *module,
                                WASMExecEnv *exec_env,
@@ -1127,6 +1131,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
     uint32 cache_index, type_index, cell_num;
     uint8 value_type;
     uint64 step = 0;
+    bool ayncflag;
 
 #if WASM_ENABLE_LABELS_AS_VALUES != 0
 #define HANDLE_OPCODE(op) &&HANDLE_##op
@@ -1216,7 +1221,9 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
 
 #if WASM_ENABLE_LABELS_AS_VALUES == 0
     while (frame_ip < frame_ip_end) {
+        migration_async:
         if (sig_flag) {
+
             FILE *fp;
             fp = fopen("interp.img", "wb");
             // WASMMemoryInstance *memory = module->default_memory;
@@ -3936,11 +3943,14 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
                 wasm_interp_call_func_native(module, exec_env, cur_func,
                                              prev_frame);
             }
+            if (!done_flag) {
+                goto migration_async;
+            }
 
             prev_frame = frame->prev_frame;
             cur_func = frame->function;
             UPDATE_ALL_FROM_FRAME();
-
+        restore_async_func:
             /* update memory instance ptr and memory size */
             memory = module->default_memory;
             if (memory)
