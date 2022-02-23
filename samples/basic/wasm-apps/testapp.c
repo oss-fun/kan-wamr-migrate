@@ -38,7 +38,6 @@ generate_float(int iteration, double seed1, float seed2)
         ret += 1.0f / seed1 + seed2;
         printf("%d:%f\n", i,ret);
     }
-    while(1){}
 
     printf("exit from WASM function: %s\n", __FUNCTION__);
 

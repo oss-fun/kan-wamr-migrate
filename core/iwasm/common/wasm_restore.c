@@ -68,12 +68,6 @@ wasm_restore_frame(WASMExecEnv *exec_env, const char *img_dir)
             frame->ip = NULL;
             frame->sp = frame->lp + 0;
 
-            if (!(frame->tsp = wasm_runtime_malloc((uint64)all_cell_num))) {
-                exit(1);
-            }
-            frame->tsp_bottom = frame->tsp;
-            frame->tsp_boundary = frame->tsp_bottom + all_cell_num;
-
             info->frame = prev_frame = frame;
             info->all_cell_num = all_cell_num;
         }
@@ -183,18 +177,6 @@ restore_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
     fread(&sp_offset, sizeof(uint32), 1, fp);
     frame->sp = frame->sp_bottom + sp_offset;
 
-    // uint8 *tsp_bottom;
-    // uint8 *tsp_boundary;
-    // uint8 *tsp;
-    if (!(frame->tsp_bottom =
-              wasm_runtime_malloc((uint64)func->u.func->max_stack_cell_num))) {
-        printf("malloc error\n");
-        exit(1);
-    }
-    frame->tsp_boundary = frame->tsp_bottom + func->u.func->max_stack_cell_num;
-    uint32 tsp_offset;
-    fread(&tsp_offset, sizeof(uint32), 1, fp);
-    frame->tsp = frame->tsp_bottom + tsp_offset;
 
     // WASMBranchBlock *csp_bottom;
     // WASMBranchBlock *csp_boundary;
@@ -248,33 +230,7 @@ restore_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
         }
     }
 
-    /*
-    uint8 *tsp = frame->tsp_bottom;
-    while (tsp != frame->tsp) {
-        fread(tsp, sizeof(uint8), 1, fp);
-        tsp++;
-    }
-    */
-    fread(frame->tsp_bottom, sizeof(uint8), tsp_offset, fp);
-
-    for (i = 0; i < sp_offset;) {
-        switch (frame->tsp_bottom[i]) {
-            case VALUE_TYPE_I32:
-            case VALUE_TYPE_F32:
-                fread(&frame->sp_bottom[i], sizeof(uint32), 1, fp);
-                i++;
-                break;
-            case VALUE_TYPE_I64:
-            case VALUE_TYPE_F64:
-                fread(&frame->sp_bottom[i], sizeof(uint64), 1, fp);
-                i += 2;
-                break;
-            default:
-                printf("type error in wasm_restore.c\n");
-                exit(1);
-                break;
-        }
-    }
+    fread(frame->sp_bottom, sizeof(uint32), sp_offset, fp);
 
     WASMBranchBlock *csp = frame->csp_bottom;
     uint32 csp_num = frame->csp - frame->csp_bottom;
@@ -306,15 +262,6 @@ restore_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
         }
         else {
             csp->frame_sp = addr + frame->sp_bottom;
-        }
-
-        // uint8 *frame_tsp;
-        fread(&addr, sizeof(uint64), 1, fp);
-        if (addr == -1) {
-            csp->frame_tsp = NULL;
-        }
-        else {
-            csp->frame_tsp = addr + frame->tsp_bottom;
         }
 
         // uint32 cell_num;

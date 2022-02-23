@@ -49,6 +49,7 @@ OUT_FILE=${i%.*}.wasm
         -Wl,--export=generate_float \
         -Wl,--export=float_to_string \
         -Wl,--export=calculate\
+        -Wl,--export=fibonacci\
         -Wl,--allow-undefined \
         -o ${OUT_DIR}/wasm-apps/${OUT_FILE} ${APP_SRC}
         

@@ -23,7 +23,7 @@ typedef struct Node {
     struct Node *next;
 } Node;
 
-static Node *root=NULL;
+static Node *root = NULL;
 //
 // Primitive parameters functions
 //
@@ -50,7 +50,7 @@ generate_float(int iteration, double seed1, float seed2)
         p = malloc(sizeof(*p));
         *p = i;
         printf("%d\n", *p);
-        tmp=mul7(*p);
+        tmp = mul7(*p);
         tmp = get_pow(i, tmp);
         if (node != NULL) {
             printf("%d\n", *p + (int)node->f);
@@ -62,6 +62,16 @@ generate_float(int iteration, double seed1, float seed2)
     printf("exit from WASM function: %s\n", __FUNCTION__);
 
     return ret;
+}
+
+int
+fibonacci(int n)
+{
+    if (n == 1 || n == 2) {
+        return 1;
+    }
+    get_pow(1, 1);
+    return fibonacci(n - 1) + fibonacci(n - 2);
 }
 
 // Converts a floating-point/double number to a string.

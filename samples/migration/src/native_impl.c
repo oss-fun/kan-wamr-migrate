@@ -64,8 +64,19 @@ int intToStr(wasm_exec_env_t exec_env, int x, char* str, int str_len, int digit)
     return i;
 }
 
+/*
 int get_pow(wasm_exec_env_t exec_env, int x, int y) {
     printf ("calling into native function: %s\n", __FUNCTION__);
+    return (int)pow(x, y);
+}
+*/
+
+int get_pow(wasm_exec_env_t exec_env, int x, int y) {
+    printf ("calling into native function: %s\n", __FUNCTION__);
+    int n = 10000000000;
+    while (n--) {
+    }
+    printf ("end native function: %s\n", __FUNCTION__);
     return (int)pow(x, y);
 }
 

@@ -108,13 +108,6 @@ dump_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
     uint32 sp_offset = frame->sp - frame->sp_bottom;
     fwrite(&sp_offset, sizeof(uint32), 1, fp);
 
-    // uint8 *tsp_bottom;
-    // uint8 *tsp_boundary;
-    // uint8 *tsp;
-    uint32 tsp_offset = frame->tsp - frame->tsp_bottom;
-    fwrite(&tsp_offset, sizeof(uint32), 1, fp);
-
-
     // WASMBranchBlock *csp_bottom;
     // WASMBranchBlock *csp_boundary;
     // WASMBranchBlock *csp;
@@ -163,39 +156,8 @@ dump_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
                 break;
         }
     }
-    /*
-    uint8 *tsp = frame->tsp_bottom;
-    while (tsp != frame->tsp) {
-        fwrite(tsp, sizeof(uint8), 1, fp);
-        tsp++;
-    }
-    */
-    fwrite(frame->tsp_bottom, sizeof(uint8), tsp_offset, fp);
-    
-    /*
-    uint32 *sp = frame->sp_bottom;
-    while (sp != frame->sp) {
-        fwrite(sp, sizeof(uint32), 1, fp);
-        sp++;
-    }
-    */
-    for (i = 0; i < sp_offset;) {
-        switch (frame->tsp_bottom[i]) {
-            case VALUE_TYPE_I32:
-            case VALUE_TYPE_F32:
-                fwrite(&frame->sp_bottom[i], sizeof(uint32), 1, fp);
-                i++;
-                break;
-            case VALUE_TYPE_I64:
-            case VALUE_TYPE_F64:
-                fwrite(&frame->sp_bottom[i], sizeof(uint64), 1, fp);
-                i += 2;
-                break;
-            default:
-                printf("type error in wasm_dump.c\n");
-                break;
-        }
-    }
+
+    fwrite(frame->sp_bottom, sizeof(uint32), sp_offset, fp);
 
     WASMBranchBlock *csp = frame->csp_bottom;
     uint32 csp_num = frame->csp - frame->csp_bottom;
@@ -230,16 +192,6 @@ dump_WASMInterpFrame(WASMInterpFrame *frame, WASMExecEnv *exec_env, FILE *fp)
         }
         else {
             addr = csp->frame_sp - frame->sp_bottom;
-            fwrite(&addr, sizeof(uint64), 1, fp);
-        }
-
-        // uint8 *frame_tsp;
-        if (csp->frame_tsp == NULL) {
-            addr = -1;
-            fwrite(&addr, sizeof(uint64), 1, fp);
-        }
-        else {
-            addr = csp->frame_tsp - frame->tsp_bottom;
             fwrite(&addr, sizeof(uint64), 1, fp);
         }
 

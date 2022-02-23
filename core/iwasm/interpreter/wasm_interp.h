@@ -43,10 +43,6 @@ typedef struct WASMInterpFrame {
     uint32 *sp_boundary;
     uint32 *sp;
 
-    uint8 *tsp_bottom;
-    uint8 *tsp_boundary;
-    uint8 *tsp;
-
     WASMBranchBlock *csp_bottom;
     WASMBranchBlock *csp_boundary;
     WASMBranchBlock *csp;

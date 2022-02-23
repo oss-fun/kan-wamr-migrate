@@ -29,6 +29,7 @@ main(int argc, char *argv_main[])
     char *buffer, error_buf[128];
     int opt;
     char *wasm_path = NULL;
+    bool restore_flag=false;
 
     wasm_module_t module = NULL;
     wasm_module_inst_t module_inst = NULL;
@@ -42,10 +43,13 @@ main(int argc, char *argv_main[])
     RuntimeInitArgs init_args;
     memset(&init_args, 0, sizeof(RuntimeInitArgs));
 
-    while ((opt = getopt(argc, argv_main, "hf:")) != -1) {
+    while ((opt = getopt(argc, argv_main, "hrf:")) != -1) {
         switch (opt) {
             case 'f':
                 wasm_path = optarg;
+                break;
+            case 'r':
+                restore_flag = true;
                 break;
             case 'h':
                 print_usage();
@@ -124,7 +128,7 @@ main(int argc, char *argv_main[])
     }
 
     uint32 argv[1];
-    uint32 num = 40;
+    uint32 num = 10;
     argv[0] = num;
 
     if (!(func =
@@ -133,11 +137,20 @@ main(int argc, char *argv_main[])
         goto fail;
     }
 
-    // pass 4 elements for function arguments
-    if (!wasm_runtime_call_wasm(exec_env, func, 1, argv)) {
-        printf("call wasm function fibonacci failed. %s\n",
-               wasm_runtime_get_exception(module_inst));
-        goto fail;
+    if (restore_flag) {
+        if (!wasm_runtime_restore_wasm(exec_env, func, 1, argv)) {
+            printf("restore wasm function fibonacci failed. %s\n",
+                   wasm_runtime_get_exception(module_inst));
+            goto fail;
+        }
+    }
+    else {
+        // pass 4 elements for function arguments
+        if (!wasm_runtime_call_wasm(exec_env, func, 1, argv)) {
+            printf("call wasm function fibonacci failed. %s\n",
+                   wasm_runtime_get_exception(module_inst));
+            goto fail;
+        }
     }
 
     uint32 ret_val;
