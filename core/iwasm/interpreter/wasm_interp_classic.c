@@ -846,38 +846,37 @@ FREE_FRAME(WASMExecEnv *exec_env, WASMInterpFrame *frame)
     wasm_exec_env_free_wasm_frame(exec_env, frame);
 }
 
-static void
-wasm_interp_call_func_native(WASMModuleInstance *module_inst,
-                             WASMExecEnv *exec_env,
-                             WASMFunctionInstance *cur_func,
-                             WASMInterpFrame *prev_frame)
-{
-    WASMFunctionImport *func_import = cur_func->u.func_import;
-    unsigned local_cell_num = 2;
+enum InvokeStatus {
+    CALLING,  //呼び出し中
+    FINISHED, //終了済み
+};
+
+static bool invoke_ret = false;
+static bool end_flag;
+static uint8 invoke_status = FINISHED;
+
+typedef struct InvokeArg {
+    WASMExecEnv *exec_env;
+    WASMModuleInstance *module_inst;
+    WASMFunctionInstance *cur_func;
+    WASMFunctionImport *func_import;
     WASMInterpFrame *frame;
-    uint32 argv_ret[2];
-    char buf[128];
+    uint32 *argv_ret;
+} InvokeArg;
+
+void *
+invoke_native_internal(void *arg)
+{
+    InvokeArg *invoke_arg = (InvokeArg *)arg;
+
+    WASMExecEnv *exec_env = invoke_arg->exec_env;
+    WASMModuleInstance *module_inst = invoke_arg->module_inst;
+    WASMFunctionInstance *cur_func = invoke_arg->cur_func;
+    WASMFunctionImport *func_import = invoke_arg->func_import;
+    WASMInterpFrame *frame = invoke_arg->frame;
+    uint32 *argv_ret = invoke_arg->argv_ret;
+
     bool ret;
-    pthread_t th;
-
-    if (!(frame = ALLOC_FRAME(exec_env,
-                              wasm_interp_interp_frame_size(local_cell_num),
-                              prev_frame)))
-        return;
-
-    frame->function = cur_func;
-    frame->ip = NULL;
-    frame->sp = frame->lp + local_cell_num;
-
-    wasm_exec_env_set_cur_frame(exec_env, frame);
-
-    if (!func_import->func_ptr_linked) {
-        snprintf(buf, sizeof(buf),
-                 "failed to call unlinked import function (%s, %s)",
-                 func_import->module_name, func_import->field_name);
-        wasm_set_exception(module_inst, buf);
-        return;
-    }
 
     if (func_import->call_conv_wasm_c_api) {
         ret = wasm_runtime_invoke_c_api_native(
@@ -902,28 +901,86 @@ wasm_interp_call_func_native(WASMModuleInstance *module_inst,
             func_import->signature, func_import->attachment, frame->lp,
             cur_func->param_cell_num, argv_ret);
     }
+    end_flag = true;
+    invoke_ret = ret;
+    invoke_status = FINISHED;
+    return NULL;
+}
 
-    if (!ret)
-        return;
+static bool
+wasm_interp_call_func_native(WASMModuleInstance *module_inst,
+                             WASMExecEnv *exec_env,
+                             WASMFunctionInstance *cur_func,
+                             WASMInterpFrame *prev_frame)
+{
+    WASMFunctionImport *func_import = cur_func->u.func_import;
+    unsigned local_cell_num = 2;
+    WASMInterpFrame *frame;
+    uint32 argv_ret[2];
+    char buf[128];
+    bool ret;
+    pthread_t th;
 
-    if (cur_func->ret_cell_num == 1) {
-        prev_frame->sp[0] = argv_ret[0];
-        prev_frame->sp++;
-        prev_frame->tsp[0] = VALUE_TYPE_I32;
-        prev_frame->tsp++;
+    if (!(frame = ALLOC_FRAME(exec_env,
+                              wasm_interp_interp_frame_size(local_cell_num),
+                              prev_frame)))
+        return true;
+
+    frame->function = cur_func;
+    frame->ip = NULL;
+    frame->sp = frame->lp + local_cell_num;
+
+    wasm_exec_env_set_cur_frame(exec_env, frame);
+
+    if (!func_import->func_ptr_linked) {
+        snprintf(buf, sizeof(buf),
+                 "failed to call unlinked import function (%s, %s)",
+                 func_import->module_name, func_import->field_name);
+        wasm_set_exception(module_inst, buf);
+        return true;
     }
-    else if (cur_func->ret_cell_num == 2) {
-        prev_frame->sp[0] = argv_ret[0];
-        prev_frame->sp[1] = argv_ret[1];
-        prev_frame->tsp[0] = VALUE_TYPE_I64;
-        prev_frame->tsp[1] = VALUE_TYPE_I64;
+    InvokeArg arg = { .exec_env = exec_env,
+                      .module_inst = module_inst,
+                      .cur_func = cur_func,
+                      .func_import = func_import,
+                      .frame = frame,
+                      .argv_ret = argv_ret };
 
-        prev_frame->sp += 2;
-        prev_frame->tsp += 2;
+    end_flag = false;
+    invoke_status = CALLING;
+    pthread_create(&th, NULL, invoke_native_internal, (void *)&arg);
+
+    while (!end_flag) {
+    }
+
+    if (invoke_status == FINISHED) { // 呼び出し終了
+
+        if (!invoke_ret)
+            return true;
+
+        if (cur_func->ret_cell_num == 1) {
+            prev_frame->sp[0] = argv_ret[0];
+            prev_frame->sp++;
+            prev_frame->tsp[0] = VALUE_TYPE_I32;
+            prev_frame->tsp++;
+        }
+        else if (cur_func->ret_cell_num == 2) {
+            prev_frame->sp[0] = argv_ret[0];
+            prev_frame->sp[1] = argv_ret[1];
+            prev_frame->tsp[0] = VALUE_TYPE_I64;
+            prev_frame->tsp[1] = VALUE_TYPE_I64;
+
+            prev_frame->sp += 2;
+            prev_frame->tsp += 2;
+        }
+        FREE_FRAME(exec_env, frame);
+        wasm_exec_env_set_cur_frame(exec_env, prev_frame);
+        return true;
     }
 
     FREE_FRAME(exec_env, frame);
     wasm_exec_env_set_cur_frame(exec_env, prev_frame);
+    return false;
 }
 
 #if WASM_ENABLE_MULTI_MODULE != 0
@@ -1093,6 +1150,7 @@ void
 wasm_interp_sigint(int signum)
 {
     sig_flag = true;
+    end_flag = true;
 }
 
 bool done_flag;
@@ -1115,9 +1173,10 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
     /* Points to this special opcode so as to jump to the
      * call_method_from_entry.  */
     register uint8 *frame_ip = &opcode_IMPDEP; /* cache of frame->ip */
-    register uint32 *frame_lp = NULL;          /* cache of frame->lp */
-    register uint32 *frame_sp = NULL;          /* cache of frame->sp */
-    register uint8 *frame_tsp = NULL;          /* cache of frame->lsp */
+    register uint8 *frame_prev_ip;
+    register uint32 *frame_lp = NULL; /* cache of frame->lp */
+    register uint32 *frame_sp = NULL; /* cache of frame->sp */
+    register uint8 *frame_tsp = NULL; /* cache of frame->lsp */
     WASMBranchBlock *frame_csp = NULL;
     BlockAddr *cache_items;
     uint8 *frame_ip_end = frame_ip + 1;
@@ -1211,19 +1270,24 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
 
         fread(&p_offset, sizeof(uint32), 1, fp);
         maddr = memory->memory_data + p_offset;
+
+        fread(&done_flag, sizeof(done_flag), 1, fp);
+
         // SYNC_ALL_TO_FRAME();
         cur_func = frame->function;
         prev_frame = frame->prev_frame;
 
         fclose(fp);
-        goto RESTORE_POINT;
+        if (!done_flag) {
+            goto call_func_from_interp;
+        }
+        goto restore_point;
     }
 
 #if WASM_ENABLE_LABELS_AS_VALUES == 0
     while (frame_ip < frame_ip_end) {
-        migration_async:
+    migration_async:
         if (sig_flag) {
-
             FILE *fp;
             fp = fopen("interp.img", "wb");
             // WASMMemoryInstance *memory = module->default_memory;
@@ -1287,6 +1351,8 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
             p_offset = maddr - memory->memory_data;
             fwrite(&p_offset, sizeof(uint32), 1, fp);
 
+            fwrite(&done_flag, sizeof(done_flag), 1, fp);
+
             if (native_handler != NULL) {
                 (*native_handler)();
             }
@@ -1296,8 +1362,9 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
             exit(0);
             // restore_flag = true;
         }
-    RESTORE_POINT:
+    restore_point:
         step++;
+        frame_prev_ip = frame_ip;
         opcode = *frame_ip++;
         // printf("step:%d\n", step);
 
@@ -1507,6 +1574,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
 #if WASM_ENABLE_THREAD_MGR != 0
                 CHECK_SUSPEND_FLAGS();
 #endif
+                frame_prev_ip = frame_ip;
                 read_leb_uint32(frame_ip, frame_ip_end, fidx);
 #if WASM_ENABLE_MULTI_MODULE != 0
                 if (fidx >= module->function_count) {
@@ -3923,8 +3991,8 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
     {
         /* Only do the copy when it's called from interpreter.  */
         WASMInterpFrame *outs_area = wasm_exec_env_wasm_stack_top(exec_env);
-        POP(cur_func->param_cell_num);
-        SYNC_ALL_TO_FRAME();
+        POP(cur_func->param_cell_num); // frame_sp, frame_tsp
+        SYNC_ALL_TO_FRAME();           // frame->*
         word_copy(outs_area->lp, frame_sp, cur_func->param_cell_num);
         prev_frame = frame;
     }
@@ -3940,17 +4008,22 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
             else
 #endif
             {
-                wasm_interp_call_func_native(module, exec_env, cur_func,
-                                             prev_frame);
+                done_flag = wasm_interp_call_func_native(module, exec_env,
+                                                         cur_func, prev_frame);
             }
             if (!done_flag) {
+                frame_sp += cur_func->param_cell_num;
+                frame_tsp += cur_func->param_cell_num;
+                frame_ip = frame_prev_ip;
+
+                // sig_flag = true;
                 goto migration_async;
             }
 
             prev_frame = frame->prev_frame;
             cur_func = frame->function;
             UPDATE_ALL_FROM_FRAME();
-        restore_async_func:
+
             /* update memory instance ptr and memory size */
             memory = module->default_memory;
             if (memory)

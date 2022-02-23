@@ -32,33 +32,14 @@ generate_float(int iteration, double seed1, float seed2)
 {
     float ret;
     int *p;
-    Node *node;
-
     printf("calling into WASM function: %s\n", __FUNCTION__);
 
     for (int i = 0; i < iteration; i++) {
-        node = malloc(sizeof(Node));
         ret += 1.0f / seed1 + seed2;
-        node->f = ret;
-        node->next = root;
-        root = node;
+        printf("%d:%f\n", i,ret);
     }
+    while(1){}
 
-    node = root;
-    for (int i = 0; i < 100000; i++) {
-        int tmp;
-        p = malloc(sizeof(*p));
-        *p = i;
-        printf("%d\n", *p);
-        tmp=mul7(*p);
-        tmp = get_pow(i, tmp);
-        if (node != NULL) {
-            printf("%d\n", *p + (int)node->f);
-            node = node->next;
-        }
-
-        free(p);
-    }
     printf("exit from WASM function: %s\n", __FUNCTION__);
 
     return ret;
