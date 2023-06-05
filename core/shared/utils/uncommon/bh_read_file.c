@@ -23,8 +23,8 @@ bh_read_file_to_buffer(const char *filename, uint32 *ret_size)
         return NULL;
     }
 
-    if (_sopen_s(&file, filename, _O_RDONLY | _O_BINARY, _SH_DENYNO, 0)) {
-        printf("Read file to buffer failed: open file %s failed.\n", 
+    if (_sopen_s(&file, filename, _O_RDONLY| _O_BINARY, _SH_DENYNO, 0)) {
+        printf("Read file to buffer failed: open file %s failed.\n",
                filename);
         return NULL;
     }
@@ -47,6 +47,7 @@ bh_read_file_to_buffer(const char *filename, uint32 *ret_size)
     }
     if (BH_MALLOC == wasm_runtime_malloc)
         //alloc_info_buf(buffer, charT, buf_size);
+
 #if WASM_ENABLE_MEMORY_TRACING != 0
     printf("Read file, total size: %u\n", file_size);
 #endif

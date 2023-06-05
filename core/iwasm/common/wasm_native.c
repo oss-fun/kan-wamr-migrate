@@ -294,7 +294,7 @@ register_natives(const char *module_name,
     node->native_symbols = native_symbols;
     node->n_native_symbols = n_native_symbols;
     node->call_conv_raw = call_conv_raw;
-    
+
     /* Add to list head */
     node->next = g_native_symbols_list;
     g_native_symbols_list = node;
