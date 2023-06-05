@@ -11,7 +11,6 @@
 #include "lib_export.h"
 #ifndef WASM_RUNTIME_API_EXTERN
 #if defined(_MSC_BUILD)
-#if defined(_MSC_BUILD )
     #if defined(COMPILING_WASM_RUNTIME_API)
         #define WASM_RUNTIME_API_EXTERN __declspec(dllexport)
     #else
