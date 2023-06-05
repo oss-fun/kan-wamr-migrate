@@ -15,6 +15,7 @@ extern "C" {
 /* Maximum initial size of hash map */
 #define HASH_MAP_MAX_SIZE 65536
 
+struct HashMap;
 typedef struct HashMap HashMap;
 
 /* Hash function: to get the hash value of key. */
@@ -34,26 +35,6 @@ typedef void (*ValueDestroyFunc)(void *key);
 /* traverse callback function:
    auto called when traverse every hash element */
 typedef void (*TraverseCallbackFunc)(void *key, void *value, void *user_data);
-
-typedef struct HashMapElem {
-    void *key;
-    void *value;
-    struct HashMapElem *next;
-} HashMapElem;
-
-struct HashMap {
-    /* size of element array */
-    uint32 size;
-    /* lock for elements */
-    korp_mutex *lock;
-    /* hash function of key */
-    HashFunc hash_func;
-    /* key equal function */
-    KeyEqualFunc key_equal_func;
-    KeyDestroyFunc key_destroy_func;
-    ValueDestroyFunc value_destroy_func;
-    HashMapElem *elements[1];
-};
 
 /**
  * Create a hash map.

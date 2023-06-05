@@ -6,13 +6,14 @@
 #include "bh_vector.h"
 #include "../../iwasm/common/wasm_memory.h"
 
-static uint8 *
+static uint8*
 alloc_vector_data(size_t length, size_t size_elem)
 {
     uint64 total_size = ((uint64)size_elem) * length;
     uint8 *data;
 
-    if (length > UINT32_MAX || size_elem > UINT32_MAX
+    if (length > UINT32_MAX 
+        || size_elem > UINT32_MAX
         || total_size > UINT32_MAX) {
         return NULL;
     }
@@ -84,13 +85,12 @@ bh_vector_set(Vector *vector, uint32 index, const void *elem_buf)
         return false;
     }
 
-    memcpy(vector->data + vector->size_elem * index, elem_buf,
-           vector->size_elem);
+    memcpy(vector->data + vector->size_elem * index,
+            elem_buf, vector->size_elem);
     return true;
 }
 
-bool
-bh_vector_get(const Vector *vector, uint32 index, void *elem_buf)
+bool bh_vector_get(const Vector *vector, uint32 index, void *elem_buf)
 {
     if (!vector || !elem_buf) {
         LOG_ERROR("Get vector elem failed: vector or elem buf is NULL.\n");
@@ -107,8 +107,7 @@ bh_vector_get(const Vector *vector, uint32 index, void *elem_buf)
     return true;
 }
 
-bool
-bh_vector_insert(Vector *vector, uint32 index, const void *elem_buf)
+bool bh_vector_insert(Vector *vector, uint32 index, const void *elem_buf)
 {
     size_t i;
     uint8 *p;
@@ -139,8 +138,7 @@ bh_vector_insert(Vector *vector, uint32 index, const void *elem_buf)
     return true;
 }
 
-bool
-bh_vector_append(Vector *vector, const void *elem_buf)
+bool bh_vector_append(Vector *vector, const void *elem_buf)
 {
     if (!vector || !elem_buf) {
         LOG_ERROR("Append vector elem failed: vector or elem buf is NULL.\n");
@@ -152,8 +150,8 @@ bh_vector_append(Vector *vector, const void *elem_buf)
         return false;
     }
 
-    memcpy(vector->data + vector->size_elem * vector->num_elems, elem_buf,
-           vector->size_elem);
+    memcpy(vector->data + vector->size_elem * vector->num_elems,
+           elem_buf, vector->size_elem);
     vector->num_elems++;
     return true;
 }
