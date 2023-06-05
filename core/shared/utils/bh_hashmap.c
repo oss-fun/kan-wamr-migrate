@@ -9,7 +9,6 @@
 
 HashMap *
 bh_hash_map_create(uint32 size, bool use_lock,
-                   bool use_lock,
                    HashFunc hash_func,
                    KeyEqualFunc key_equal_func,
                    KeyDestroyFunc key_destroy_func,
