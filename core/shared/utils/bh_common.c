@@ -67,15 +67,16 @@ b_strcat_s(char * s1, unsigned int s1max, const char * s2)
 }
 
 int
-b_strcpy_s(char *s1, unsigned int s1max, const char *s2)
+b_strcpy_s(char * s1, unsigned int s1max, const char * s2)
 {
-    if (NULL == s1 || NULL == s2 || s1max < (strlen(s2) + 1)
-        || s1max > RSIZE_MAX) {
-        return -1;
-    }
+  if (NULL == s1 || NULL == s2
+      || s1max < (strlen(s2) + 1)
+      || s1max > RSIZE_MAX) {
+    return -1;
+  }
 
-    memcpy(s1, s2, strlen(s2) + 1);
-    return 0;
+  memcpy(s1, s2, strlen(s2) + 1);
+  return 0;
 }
 
 char *
@@ -109,3 +110,4 @@ wa_strdup(const char *s)
     }
     return s1;
 }
+
