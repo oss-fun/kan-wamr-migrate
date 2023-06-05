@@ -12,8 +12,9 @@ extern "C" {
 
 #include "bh_platform.h"
 
-
+struct bh_queue_node;
 typedef struct bh_queue_node * bh_message_t;
+struct bh_queue;
 typedef struct bh_queue bh_queue;
 
 typedef void (*bh_queue_handle_msg_callback)(void *message, void *arg);
@@ -37,27 +38,6 @@ typedef void (*bh_queue_handle_msg_callback)(void *message, void *arg);
 #define bh_queue_cond_broadcast os_cond_broadcast
 
 typedef void (*bh_msg_cleaner)(void *msg);
-typedef struct bh_queue_node {
-    struct bh_queue_node * next;
-    struct bh_queue_node * prev;
-    unsigned short tag;
-    unsigned int len;
-    void * body;
-    bh_msg_cleaner msg_cleaner;
-} bh_queue_node;
-
-struct bh_queue {
-    bh_queue_mutex queue_lock;
-    bh_queue_cond queue_wait_cond;
-    unsigned int cnt;
-    unsigned int max;
-    unsigned int drops;
-    bh_queue_node * head;
-    bh_queue_node * tail;
-
-    bool exit_loop_run;
-};
-
 
 bh_queue *
 bh_queue_create();

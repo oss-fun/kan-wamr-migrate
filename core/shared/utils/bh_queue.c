@@ -6,6 +6,26 @@
 #include "bh_queue.h"
 #include "../../iwasm/common/wasm_memory.h"
 
+typedef struct bh_queue_node {
+    struct bh_queue_node * next;
+    struct bh_queue_node * prev;
+    unsigned short tag;
+    unsigned int len;
+    void * body;
+    bh_msg_cleaner msg_cleaner;
+} bh_queue_node;
+
+struct bh_queue {
+    bh_queue_mutex queue_lock;
+    bh_queue_cond queue_wait_cond;
+    unsigned int cnt;
+    unsigned int max;
+    unsigned int drops;
+    bh_queue_node * head;
+    bh_queue_node * tail;
+
+    bool exit_loop_run;
+};
 
 char * bh_message_payload(bh_message_t message)
 {
