@@ -9,15 +9,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "lib_export.h"
-
 #ifndef WASM_RUNTIME_API_EXTERN
 #if defined(_MSC_BUILD)
-#if defined(COMPILING_WASM_RUNTIME_API)
-#define WASM_RUNTIME_API_EXTERN __declspec(dllexport)
-#else
-#define WASM_RUNTIME_API_EXTERN __declspec(dllimport)
-#endif
-#else
+#if defined(_MSC_BUILD )
+    #if defined(COMPILING_WASM_RUNTIME_API)
+        #define WASM_RUNTIME_API_EXTERN __declspec(dllexport)
+    #else
+        #define WASM_RUNTIME_API_EXTERN __declspec(dllimport)
+    #endif
 #define WASM_RUNTIME_API_EXTERN
 #endif
 #endif
@@ -26,28 +25,30 @@
 extern "C" {
 #endif
 
-#define get_module_inst(exec_env) wasm_runtime_get_module_inst(exec_env)
+#define get_module_inst(exec_env) \
+    wasm_runtime_get_module_inst(exec_env)
 
-#define validate_app_addr(offset, size)                                       \
+#define validate_app_addr(offset, size) \
     wasm_runtime_validate_app_addr(module_inst, offset, size)
 
-#define validate_app_str_addr(offset)                                         \
+#define validate_app_str_addr(offset) \
     wasm_runtime_validate_app_str_addr(module_inst, offset)
 
-#define addr_app_to_native(offset)                                            \
+#define addr_app_to_native(offset) \
     wasm_runtime_addr_app_to_native(module_inst, offset)
 
-#define addr_native_to_app(ptr)                                               \
+#define addr_native_to_app(ptr) \
     wasm_runtime_addr_native_to_app(module_inst, ptr)
 
-#define module_malloc(size, p_native_addr)                                    \
+#define module_malloc(size, p_native_addr) \
     wasm_runtime_module_malloc(module_inst, size, p_native_addr)
 
-#define module_free(offset) wasm_runtime_module_free(module_inst, offset)
+#define module_free(offset) \
+    wasm_runtime_module_free(module_inst, offset)
 
-#define native_raw_return_type(type, args) type *raw_ret = (type *)(args)
+#define native_raw_return_type(type, args) type *raw_ret = (type*)(args)
 
-#define native_raw_get_arg(type, name, args) type name = *((type *)(args++))
+#define native_raw_get_arg(type, name, args) type name = *((type*)(args++))
 
 #define native_raw_set_return(val) *raw_ret = (val)
 
@@ -149,14 +150,14 @@ enum wasm_valkind_enum {
 struct wasm_ref_t;
 
 typedef struct wasm_val_t {
-    wasm_valkind_t kind;
-    union {
-        int32_t i32;
-        int64_t i64;
-        float f32;
-        double f64;
-        struct wasm_ref_t *ref;
-    } of;
+  wasm_valkind_t kind;
+  union {
+    int32_t i32;
+    int64_t i64;
+    float f32;
+    double f64;
+    struct wasm_ref_t* ref;
+  } of;
 } wasm_val_t;
 #endif
 
@@ -234,8 +235,7 @@ get_package_type(const uint8_t *buf, uint32_t size);
  * into a buffer
  */
 typedef bool (*module_reader)(const char *module_name,
-                              uint8_t **p_buffer,
-                              uint32_t *p_size);
+                              uint8_t **p_buffer, uint32_t *p_size);
 
 /**
  * It is a callback for WAMR providing by embedding to release the buffer which
@@ -264,10 +264,8 @@ wasm_runtime_set_module_reader(const module_reader reader,
  * @return true means success, false means failed
  */
 WASM_RUNTIME_API_EXTERN bool
-wasm_runtime_register_module(const char *module_name,
-                             wasm_module_t module,
-                             char *error_buf,
-                             uint32_t error_buf_size);
+wasm_runtime_register_module(const char *module_name, wasm_module_t module,
+                             char *error_buf, uint32_t error_buf_size);
 
 /**
  * To check if there is already a loaded module named module_name in the
@@ -293,10 +291,8 @@ wasm_runtime_find_module_registered(const char *module_name);
  * @return return WASM module loaded, NULL if failed
  */
 WASM_RUNTIME_API_EXTERN wasm_module_t
-wasm_runtime_load(const uint8_t *buf,
-                  uint32_t size,
-                  char *error_buf,
-                  uint32_t error_buf_size);
+wasm_runtime_load(const uint8_t *buf, uint32_t size,
+                  char *error_buf, uint32_t error_buf_size);
 
 /**
  * Load a WASM module from a specified WASM or AOT section list.
@@ -309,10 +305,8 @@ wasm_runtime_load(const uint8_t *buf,
  * @return return WASM module loaded, NULL if failed
  */
 WASM_RUNTIME_API_EXTERN wasm_module_t
-wasm_runtime_load_from_sections(wasm_section_list_t section_list,
-                                bool is_aot,
-                                char *error_buf,
-                                uint32_t error_buf_size);
+wasm_runtime_load_from_sections(wasm_section_list_t section_list, bool is_aot,
+                                char *error_buf, uint32_t error_buf_size);
 
 /**
  * Unload a WASM module.
@@ -324,28 +318,18 @@ wasm_runtime_unload(wasm_module_t module);
 
 WASM_RUNTIME_API_EXTERN void
 wasm_runtime_set_wasi_args_ex(wasm_module_t module,
-                              const char *dir_list[],
-                              uint32_t dir_count,
-                              const char *map_dir_list[],
-                              uint32_t map_dir_count,
-                              const char *env[],
-                              uint32_t env_count,
-                              char *argv[],
-                              int argc,
-                              int stdinfd,
-                              int stdoutfd,
-                              int stderrfd);
+                           const char *dir_list[], uint32_t dir_count,
+                           const char *map_dir_list[], uint32_t map_dir_count,
+                           const char *env[], uint32_t env_count,
+                           char *argv[], int argc,
+                           int stdinfd, int stdoutfd, int stderrfd);
 
 WASM_RUNTIME_API_EXTERN void
 wasm_runtime_set_wasi_args(wasm_module_t module,
-                           const char *dir_list[],
-                           uint32_t dir_count,
-                           const char *map_dir_list[],
-                           uint32_t map_dir_count,
-                           const char *env[],
-                           uint32_t env_count,
-                           char *argv[],
-                           int argc);
+                           const char *dir_list[], uint32_t dir_count,
+                           const char *map_dir_list[], uint32_t map_dir_count,
+                           const char *env[], uint32_t env_count,
+                           char *argv[], int argc);
 
 /**
  * Instantiate a WASM module.
@@ -368,10 +352,8 @@ wasm_runtime_set_wasi_args(wasm_module_t module,
  */
 WASM_RUNTIME_API_EXTERN wasm_module_inst_t
 wasm_runtime_instantiate(const wasm_module_t module,
-                         uint32_t stack_size,
-                         uint32_t heap_size,
-                         char *error_buf,
-                         uint32_t error_buf_size);
+                         uint32_t stack_size, uint32_t heap_size,
+                         char *error_buf, uint32_t error_buf_size);
 
 /**
  * Deinstantiate a WASM module instance, destroy the resources.
@@ -398,8 +380,7 @@ wasm_runtime_lookup_wasi_start_function(wasm_module_inst_t module_inst);
  */
 WASM_RUNTIME_API_EXTERN wasm_function_inst_t
 wasm_runtime_lookup_function(wasm_module_inst_t const module_inst,
-                             const char *name,
-                             const char *signature);
+                             const char *name, const char *signature);
 
 /**
  * Create execution environment for a WASM module instance.
@@ -498,10 +479,8 @@ wasm_runtime_restore(uint32_t argc,uint32_t argv[]);
 WASM_RUNTIME_API_EXTERN bool
 wasm_runtime_call_wasm_a(wasm_exec_env_t exec_env,
                          wasm_function_inst_t function,
-                         uint32_t num_results,
-                         wasm_val_t results[],
-                         uint32_t num_args,
-                         wasm_val_t *args);
+                         uint32_t num_results, wasm_val_t results[],
+                         uint32_t num_args, wasm_val_t *args);
 
 /**
  * Call the given WASM function of a WASM module instance with
@@ -522,10 +501,8 @@ wasm_runtime_call_wasm_a(wasm_exec_env_t exec_env,
 WASM_RUNTIME_API_EXTERN bool
 wasm_runtime_call_wasm_v(wasm_exec_env_t exec_env,
                          wasm_function_inst_t function,
-                         uint32_t num_results,
-                         wasm_val_t results[],
-                         uint32_t num_args,
-                         ...);
+                         uint32_t num_results, wasm_val_t results[],
+                         uint32_t num_args, ...);
 
 /**
  * Find the unique main function from a WASM module instance
@@ -543,8 +520,7 @@ wasm_runtime_call_wasm_v(wasm_exec_env_t exec_env,
  */
 WASM_RUNTIME_API_EXTERN bool
 wasm_application_execute_main(wasm_module_inst_t module_inst,
-                              int32_t argc,
-                              char *argv[]);
+                              int32_t argc, char *argv[]);
 
 /**
  * Find the specified function in argv[0] from a WASM module instance
@@ -563,9 +539,7 @@ wasm_application_execute_main(wasm_module_inst_t module_inst,
  */
 WASM_RUNTIME_API_EXTERN bool
 wasm_application_execute_func(wasm_module_inst_t module_inst,
-                              const char *name,
-                              int32_t argc,
-                              char *argv[]);
+                              const char *name, int32_t argc, char *argv[]);
 /**
  * Get exception info of the WASM module instance.
  *
@@ -631,8 +605,8 @@ wasm_runtime_get_custom_data(wasm_module_inst_t module_inst);
  *         Return non-zero if success, zero if failed.
  */
 WASM_RUNTIME_API_EXTERN uint32_t
-wasm_runtime_module_malloc(wasm_module_inst_t module_inst,
-                           uint32_t size,
+wasm_runtime_module_malloc(wasm_module_inst_t module_inst, uint32_t size,
+
                            void **p_native_addr);
 
 /**
@@ -659,8 +633,7 @@ wasm_runtime_module_free(wasm_module_inst_t module_inst, uint32_t ptr);
  */
 WASM_RUNTIME_API_EXTERN uint32_t
 wasm_runtime_module_dup_data(wasm_module_inst_t module_inst,
-                             const char *src,
-                             uint32_t size);
+                             const char *src, uint32_t size);
 
 /**
  * Validate the app address, check whether it belongs to WASM module
@@ -675,8 +648,7 @@ wasm_runtime_module_dup_data(wasm_module_inst_t module_inst,
  */
 WASM_RUNTIME_API_EXTERN bool
 wasm_runtime_validate_app_addr(wasm_module_inst_t module_inst,
-                               uint32_t app_offset,
-                               uint32_t size);
+                               uint32_t app_offset, uint32_t size);
 
 /**
  * Similar to wasm_runtime_validate_app_addr(), except that the size parameter
@@ -709,8 +681,7 @@ wasm_runtime_validate_app_str_addr(wasm_module_inst_t module_inst,
  */
 WASM_RUNTIME_API_EXTERN bool
 wasm_runtime_validate_native_addr(wasm_module_inst_t module_inst,
-                                  void *native_ptr,
-                                  uint32_t size);
+                                  void *native_ptr, uint32_t size);
 
 /**
  * Convert app address(relative address) to native address(absolute address)
@@ -831,7 +802,8 @@ wasm_runtime_get_function_attachment(wasm_exec_env_t exec_env);
  * @param user_data the user data to be set
  */
 WASM_RUNTIME_API_EXTERN void
-wasm_runtime_set_user_data(wasm_exec_env_t exec_env, void *user_data);
+wasm_runtime_set_user_data(wasm_exec_env_t exec_env,
+                           void *user_data);
 /**
  * Get the user data within execution environment.
  *
@@ -905,10 +877,8 @@ wasm_runtime_destroy_spawned_exec_env(wasm_exec_env_t exec_env);
  * @return 0 if success, -1 otherwise
  */
 WASM_RUNTIME_API_EXTERN int32_t
-wasm_runtime_spawn_thread(wasm_exec_env_t exec_env,
-                          wasm_thread_t *tid,
-                          wasm_thread_callback_t callback,
-                          void *arg);
+wasm_runtime_spawn_thread(wasm_exec_env_t exec_env, wasm_thread_t *tid,
+                          wasm_thread_callback_t callback, void *arg);
 
 /**
  * waits a spawned thread to terminate
@@ -934,8 +904,7 @@ wasm_runtime_join_thread(wasm_thread_t tid, void **retval);
  */
 WASM_RUNTIME_API_EXTERN bool
 wasm_externref_obj2ref(wasm_module_inst_t module_inst,
-                       void *extern_obj,
-                       uint32_t *p_externref_idx);
+                       void *extern_obj, uint32_t *p_externref_idx);
 
 /**
  * Retrieve the external object from an internal externref index
