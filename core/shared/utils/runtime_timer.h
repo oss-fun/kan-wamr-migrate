@@ -15,34 +15,10 @@ extern "C" {
 uint64 bh_get_tick_ms();
 uint32 bh_get_elpased_ms(uint32 *last_system_clock);
 
-
+struct _timer_ctx;
 typedef struct _timer_ctx * timer_ctx_t;
 typedef void (*timer_callback_f)(unsigned int id, unsigned int owner);
 typedef void (*check_timer_expiry_f)(timer_ctx_t ctx);
-
-typedef struct _app_timer {
-    struct _app_timer * next;
-    uint32 id;
-    uint32 interval;
-    uint64 expiry;
-    bool is_periodic;
-} app_timer_t;
-
-struct _timer_ctx {
-    app_timer_t *app_timers;
-    app_timer_t *idle_timers;
-    app_timer_t *free_timers;
-    uint32 max_timer_id;
-    int pre_allocated;
-    uint32 owner;
-
-    /* mutex and condition */
-    korp_cond cond;
-    korp_mutex mutex;
-
-    timer_callback_f timer_callback;
-    check_timer_expiry_f refresh_checker;
-};
 
 timer_ctx_t create_timer_ctx(timer_callback_f timer_handler,
                              check_timer_expiry_f, int prealloc_num,

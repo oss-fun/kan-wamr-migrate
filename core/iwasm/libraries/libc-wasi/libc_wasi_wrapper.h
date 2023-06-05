@@ -54,8 +54,6 @@ typedef struct iovec_app {
     uint32 buf_len;
 } iovec_app_t;
 
-
-
 #ifdef __cplusplus
 }
 #endif

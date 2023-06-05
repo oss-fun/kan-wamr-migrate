@@ -49,8 +49,9 @@ bh_queue_create()
     bh_queue *queue = bh_queue_malloc(sizeof(bh_queue));
 
     if (queue) {
-            if(bh_queue_malloc==wasm_runtime_malloc)
-                alloc_info(queue,bh_queueT);
+        if(bh_queue_malloc == wasm_runtime_malloc)
+            alloc_info(queue,bh_queueT);
+
         memset(queue, 0, sizeof(bh_queue));
         queue->max = DEFAULT_QUEUE_LENGTH;
 
@@ -149,8 +150,10 @@ bh_queue_node * bh_new_msg(unsigned short tag, void *body, unsigned int len,
                          bh_queue_malloc(sizeof(bh_queue_node));
     if (msg == NULL)
         return NULL;
-        if(bh_queue_malloc==wasm_runtime_malloc)
+
+    if(bh_queue_malloc == wasm_runtime_malloc)
         alloc_info(msg,bh_queue_nodeT);
+
     memset(msg, 0, sizeof(bh_queue_node));
     msg->len = len;
     msg->body = body;

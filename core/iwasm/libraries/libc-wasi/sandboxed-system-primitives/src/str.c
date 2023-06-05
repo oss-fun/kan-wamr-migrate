@@ -19,11 +19,10 @@ bh_strndup(const char *s, size_t n)
 {
     size_t l = strnlen(s, n);
     char *s1 = wasm_runtime_malloc((uint32)(l + 1));
-    if(s1)
-    alloc_info_buf(s1, charT, l + 1);
-
     if (!s1)
         return NULL;
+
+    alloc_info_buf(s1, charT, l + 1);
     bh_memcpy_s(s1, (uint32)(l + 1), s, (uint32)l);
     s1[l] = 0;
     return s1;

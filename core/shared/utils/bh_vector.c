@@ -12,7 +12,7 @@ alloc_vector_data(size_t length, size_t size_elem)
     uint64 total_size = ((uint64)size_elem) * length;
     uint8 *data;
 
-    if (length > UINT32_MAX 
+    if (length > UINT32_MAX
         || size_elem > UINT32_MAX
         || total_size > UINT32_MAX) {
         return NULL;

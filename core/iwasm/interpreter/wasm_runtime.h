@@ -325,8 +325,7 @@ wasm_restore_function(uint32 argc, uint32 argv[]);
 bool
 wasm_create_exec_env_and_call_function(WASMModuleInstance *module_inst,
                                        WASMFunctionInstance *function,
-                                       unsigned argc,
-                                       uint32 argv[]);
+                                       unsigned argc, uint32 argv[]);
 
 bool
 wasm_create_exec_env_singleton(WASMModuleInstance *module_inst);
@@ -338,12 +337,11 @@ const char*
 wasm_get_exception(WASMModuleInstance *module);
 
 uint32
-wasm_module_malloc(WASMModuleInstance *module_inst,
-                   uint32 size, void **p_native_addr);
+wasm_module_malloc(WASMModuleInstance *module_inst, uint32 size,
+                   void **p_native_addr);
 
 uint32
 wasm_module_realloc(WASMModuleInstance *module_inst, uint32 ptr, uint32 size,
-
                     void **p_native_addr);
 
 void
@@ -358,7 +356,8 @@ wasm_validate_app_addr(WASMModuleInstance *module_inst,
                        uint32 app_offset, uint32 size);
 
 bool
-wasm_validate_app_str_addr(WASMModuleInstance *module_inst, uint32 app_offset);
+wasm_validate_app_str_addr(WASMModuleInstance *module_inst,
+                           uint32 app_offset);
 
 bool
 wasm_validate_native_addr(WASMModuleInstance *module_inst,

@@ -12,6 +12,30 @@
 #define PRINT printf
 #endif
 
+typedef struct _app_timer {
+    struct _app_timer * next;
+    uint32 id;
+    uint32 interval;
+    uint64 expiry;
+    bool is_periodic;
+} app_timer_t;
+
+struct _timer_ctx {
+    app_timer_t *app_timers;
+    app_timer_t *idle_timers;
+    app_timer_t *free_timers;
+    uint32 max_timer_id;
+    int pre_allocated;
+    uint32 owner;
+
+    /* mutex and condition */
+    korp_cond cond;
+    korp_mutex mutex;
+
+    timer_callback_f timer_callback;
+    check_timer_expiry_f refresh_checker;
+};
+
 uint64
 bh_get_tick_ms()
 {
@@ -194,11 +218,13 @@ create_timer_ctx(timer_callback_f timer_handler,
                  int prealloc_num, unsigned int owner)
 {
     timer_ctx_t ctx = (timer_ctx_t)BH_MALLOC(sizeof(struct _timer_ctx));
-    
+
     if (ctx == NULL)
         return NULL;
-        if(BH_MALLOC==wasm_runtime_malloc)
-alloc_info(ctx,timer_ctx_tT);
+
+    if(BH_MALLOC==wasm_runtime_malloc)
+        alloc_info(ctx,timer_ctx_tT);
+
     memset(ctx, 0, sizeof(struct _timer_ctx));
 
     ctx->timer_callback = timer_handler;
@@ -208,11 +234,12 @@ alloc_info(ctx,timer_ctx_tT);
 
     while (prealloc_num > 0) {
         app_timer_t *timer = (app_timer_t*)BH_MALLOC(sizeof(app_timer_t));
-
         if (timer == NULL)
             goto cleanup;
-            if(BH_MALLOC==wasm_runtime_malloc)
-        alloc_info(timer,app_timer_tT);
+
+        if(BH_MALLOC==wasm_runtime_malloc)
+            alloc_info(timer,app_timer_tT);
+
         memset(timer, 0, sizeof(*timer));
         timer->next = ctx->free_timers;
         ctx->free_timers = timer;
@@ -289,7 +316,8 @@ sys_create_timer(timer_ctx_t ctx, int interval, bool is_period,
         timer = (app_timer_t*)BH_MALLOC(sizeof(app_timer_t));
         if (timer == NULL)
             return (uint32)-1;
-            if(BH_MALLOC==wasm_runtime_malloc)
+
+        if(BH_MALLOC == wasm_runtime_malloc)
             alloc_info(timer,app_timer_tT);
     }
 

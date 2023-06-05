@@ -9,8 +9,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "lib_export.h"
+
+
 #ifndef WASM_RUNTIME_API_EXTERN
-#if defined(_MSC_BUILD)
+#if defined(_MSC_BUILD )
     #if defined(COMPILING_WASM_RUNTIME_API)
         #define WASM_RUNTIME_API_EXTERN __declspec(dllexport)
     #else
@@ -51,6 +53,7 @@ extern "C" {
 #define native_raw_get_arg(type, name, args) type name = *((type*)(args++))
 
 #define native_raw_set_return(val) *raw_ret = (val)
+
 
 #ifndef WASM_MODULE_T_DEFINED
 #define WASM_MODULE_T_DEFINED
@@ -454,8 +457,7 @@ wasm_runtime_get_module_inst(wasm_exec_env_t exec_env);
 WASM_RUNTIME_API_EXTERN bool
 wasm_runtime_call_wasm(wasm_exec_env_t exec_env,
                        wasm_function_inst_t function,
-                       uint32_t argc,
-                       uint32_t argv[]);
+                       uint32_t argc, uint32_t argv[]);
 
 WASM_RUNTIME_API_EXTERN bool
 wasm_runtime_restore(uint32_t argc,uint32_t argv[]);
@@ -835,7 +837,7 @@ WASM_RUNTIME_API_EXTERN void
 wasm_runtime_dump_perf_profiling(wasm_module_inst_t module_inst);
 
 /* wasm thread callback function type */
-typedef void *(*wasm_thread_callback_t)(wasm_exec_env_t, void *);
+typedef void* (*wasm_thread_callback_t)(wasm_exec_env_t, void *);
 /* wasm thread type */
 typedef uintptr_t wasm_thread_t;
 

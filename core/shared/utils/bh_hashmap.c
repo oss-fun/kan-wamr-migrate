@@ -27,8 +27,7 @@ struct HashMap {
 };
 
 HashMap*
-bh_hash_map_create(uint32 size,
-                   bool use_lock,
+bh_hash_map_create(uint32 size, bool use_lock,
                    HashFunc hash_func,
                    KeyEqualFunc key_equal_func,
                    KeyDestroyFunc key_destroy_func,
@@ -111,8 +110,9 @@ bh_hash_map_insert(HashMap *map, void *key, void *value)
         LOG_ERROR("HashMap insert elem failed: alloc memory failed.\n");
         goto fail;
     }
-        if(BH_MALLOC==wasm_runtime_malloc)
-    alloc_info(elem, HashMapElemT);
+
+    if(BH_MALLOC == wasm_runtime_malloc)
+        alloc_info(elem, HashMapElemT);
 
     elem->key = key;
     elem->value = value;
