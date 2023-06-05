@@ -234,6 +234,7 @@ create_timer_ctx(timer_callback_f timer_handler,
 
     while (prealloc_num > 0) {
         app_timer_t *timer = (app_timer_t*)BH_MALLOC(sizeof(app_timer_t));
+
         if (timer == NULL)
             goto cleanup;
 
