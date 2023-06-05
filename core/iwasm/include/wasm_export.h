@@ -16,6 +16,7 @@
     #else
         #define WASM_RUNTIME_API_EXTERN __declspec(dllimport)
     #endif
+#else
 #define WASM_RUNTIME_API_EXTERN
 #endif
 #endif
