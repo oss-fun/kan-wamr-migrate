@@ -29,7 +29,7 @@ float generate_float(int iteration, double seed1, float seed2)
     int *p;
     Node *node;
 
-    printf("calling into WASM function: %s\n", __FUNCTION__);
+    // printf("calling into WASM function: %s\n", __FUNCTION__);
 
     for (int i = 0; i < iteration; i++) {
         node = malloc(sizeof(Node));
@@ -44,14 +44,11 @@ float generate_float(int iteration, double seed1, float seed2)
         int tmp;
         p = malloc(sizeof(*p));
         *p = i;
-        printf("%d\n", *p);
         tmp=mul7(*p);
         if (node != NULL) {
-            printf("%d\n", *p + (int)node->f);
             node = node->next;
             
         }
-        printf("tmp:%d\n", tmp);
 
         free(p);
     }
@@ -69,7 +66,6 @@ void float_to_string(float n, char *res, int res_size, int afterpoint)
 
     // Extract integer part
     int ipart = (int)n;
-    printf("%p\n", root);
 
     // Extract floating part
     float fpart = n - (float)ipart;
