@@ -1,4 +1,5 @@
 #include "bh_read_file.h"
+#include "../../../iwasm/common/wasm_memory.h"
 
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -44,6 +45,9 @@ bh_read_file_to_buffer(const char *filename, uint32 *ret_size)
         _close(file);
         return NULL;
     }
+    if (BH_MALLOC == wasm_runtime_malloc)
+        //alloc_info_buf(buffer, charT, buf_size);
+
 #if WASM_ENABLE_MEMORY_TRACING != 0
     printf("Read file, total size: %u\n", file_size);
 #endif
@@ -96,6 +100,10 @@ bh_read_file_to_buffer(const char *filename, uint32 *ret_size)
         printf("Read file to buffer failed: alloc memory failed.\n");
         close(file);
         return NULL;
+    }
+    if (BH_MALLOC == wasm_runtime_malloc){
+        //alloc_info_buf(buffer, charT, buf_size);
+        
     }
 #if WASM_ENABLE_MEMORY_TRACING != 0
     printf("Read file, total size: %u\n", file_size);

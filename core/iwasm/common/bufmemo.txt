@@ -1,0 +1,35 @@
+WASMExecEnv{
+    bottom[1]
+}
+
+WASMModuleCommon{
+    module_data[1]
+}
+
+WASMModuleInstanceCommon{
+    module_inst_data[1]
+}
+
+WASMMemoryInstanceCommon{
+    memory_inst_data[1]
+}
+
+WASMFunction{
+    *local_types
+}
+
+WASMType{
+    types[1]
+}
+
+StringNode{
+    *str
+}
+
+WASMInterpFrame{
+    lp[1]
+}
+
+WASMTableInstance{
+    base_addr[1]
+}

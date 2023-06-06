@@ -23,7 +23,7 @@ extern "C" {
 
 #define GC_HEAD_PADDING 4
 
-#define NULL_REF ((gc_object_t)NULL)
+#define NULL_REF_GC ((gc_object_t)NULL)
 
 #define GC_SUCCESS (0)
 #define GC_ERROR (-1)

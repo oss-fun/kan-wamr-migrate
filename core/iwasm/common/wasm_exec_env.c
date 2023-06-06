@@ -5,6 +5,7 @@
 
 #include "wasm_exec_env.h"
 #include "wasm_runtime_common.h"
+#include "wasm_memory.h"
 #if WASM_ENABLE_INTERP != 0
 #include "../interpreter/wasm_runtime.h"
 #endif
@@ -31,6 +32,8 @@ wasm_exec_env_create_internal(struct WASMModuleInstanceCommon *module_inst,
     if (total_size >= UINT32_MAX
         || !(exec_env = wasm_runtime_malloc((uint32)total_size)))
         return NULL;
+        
+    alloc_info_ex(exec_env, WASMExecEnvT, stack_size);
 
     memset(exec_env, 0, (uint32)total_size);
 
@@ -76,6 +79,9 @@ fail2:
     wasm_runtime_free(exec_env->argv_buf);
 fail1:
 #endif
+#ifdef __FREE_DEBUG
+        printf("wasm_exec_env:82\n");
+#endif
     wasm_runtime_free(exec_env);
     return NULL;
 }
@@ -89,6 +95,9 @@ wasm_exec_env_destroy_internal(WASMExecEnv *exec_env)
 #endif
 #if WASM_ENABLE_AOT != 0
     wasm_runtime_free(exec_env->argv_buf);
+#endif
+#ifdef __FREE_DEBUG
+        printf("wasm_exec_env:99\n");
 #endif
     wasm_runtime_free(exec_env);
 }

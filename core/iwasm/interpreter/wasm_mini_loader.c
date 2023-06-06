@@ -10,6 +10,7 @@
 #include "wasm_opcode.h"
 #include "wasm_runtime.h"
 #include "../common/wasm_native.h"
+#include "../common/wasm_memory.h"
 
 /* Read a value of given type from the address pointed to by the given
    pointer and increase the pointer to the position just after the
@@ -161,6 +162,7 @@ loader_malloc(uint64 size, char *error_buf, uint32 error_buf_size)
                       "allocate memory failed");
         return NULL;
     }
+    alloc_info_buf(mem,uint8T, size);
 
     memset(mem, 0, (uint32)size);
     return mem;
@@ -3190,12 +3192,16 @@ wasm_loader_ctx_init(WASMFunction *func)
         wasm_runtime_malloc(sizeof(WASMLoaderContext));
     if (!loader_ctx)
         return false;
+
+    alloc_info(loader_ctx, WASMLoaderContextT);
     memset(loader_ctx, 0, sizeof(WASMLoaderContext));
 
     loader_ctx->frame_ref_size = 32;
     if (!(loader_ctx->frame_ref_bottom = loader_ctx->frame_ref =
             wasm_runtime_malloc(loader_ctx->frame_ref_size)))
         goto fail;
+
+    alloc_info_buf(loader_ctx->frame_ref_bottom, uint8T, loader_ctx->frame_ref_size);
     memset(loader_ctx->frame_ref_bottom, 0, loader_ctx->frame_ref_size);
     loader_ctx->frame_ref_boundary = loader_ctx->frame_ref_bottom +
                                         loader_ctx->frame_ref_size;
@@ -3204,6 +3210,8 @@ wasm_loader_ctx_init(WASMFunction *func)
     if (!(loader_ctx->frame_csp_bottom = loader_ctx->frame_csp =
             wasm_runtime_malloc(loader_ctx->frame_csp_size)))
         goto fail;
+
+    alloc_info_buf(loader_ctx->frame_csp_bottom, BranchBlockT, 8);
     memset(loader_ctx->frame_csp_bottom, 0, loader_ctx->frame_csp_size);
     loader_ctx->frame_csp_boundary = loader_ctx->frame_csp_bottom + 8;
 
@@ -3212,6 +3220,8 @@ wasm_loader_ctx_init(WASMFunction *func)
     if (!(loader_ctx->frame_offset_bottom = loader_ctx->frame_offset =
             wasm_runtime_malloc(loader_ctx->frame_offset_size)))
         goto fail;
+
+    alloc_info_buf(loader_ctx->frame_offset_bottom, uint16T, 32);
     memset(loader_ctx->frame_offset_bottom, 0,
            loader_ctx->frame_offset_size);
     loader_ctx->frame_offset_boundary = loader_ctx->frame_offset_bottom + 32;
@@ -3220,6 +3230,8 @@ wasm_loader_ctx_init(WASMFunction *func)
     loader_ctx->const_buf_size = sizeof(Const) * 8;
     if (!(loader_ctx->const_buf = wasm_runtime_malloc(loader_ctx->const_buf_size)))
         goto fail;
+
+    alloc_info_buf(loader_ctx->const_buf, uint8T, loader_ctx->const_buf_size);
     memset(loader_ctx->const_buf, 0, loader_ctx->const_buf_size);
 
     loader_ctx->start_dynamic_offset = loader_ctx->dynamic_offset =
@@ -3470,6 +3482,8 @@ wasm_loader_ctx_reinit(WASMLoaderContext *ctx)
 {
     if (!(ctx->p_code_compiled = wasm_runtime_malloc(ctx->code_compiled_size)))
         return false;
+
+    alloc_info_buf(ctx->p_code_compiled, uint8T, ctx->code_compiled_size);
     memset(ctx->p_code_compiled, 0, ctx->code_compiled_size);
     ctx->p_code_compiled_end = ctx->p_code_compiled +
                                     ctx->code_compiled_size;

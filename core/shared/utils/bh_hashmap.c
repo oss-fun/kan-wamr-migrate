@@ -4,26 +4,7 @@
  */
 
 #include "bh_hashmap.h"
-
-typedef struct HashMapElem {
-    void *key;
-    void *value;
-    struct HashMapElem *next;
-} HashMapElem;
-
-struct HashMap {
-    /* size of element array */
-    uint32 size;
-    /* lock for elements */
-    korp_mutex *lock;
-    /* hash function of key */
-    HashFunc hash_func;
-    /* key equal function */
-    KeyEqualFunc key_equal_func;
-    KeyDestroyFunc key_destroy_func;
-    ValueDestroyFunc value_destroy_func;
-    HashMapElem *elements[1];
-};
+#include "../../iwasm/common/wasm_memory.h"
 
 HashMap*
 bh_hash_map_create(uint32 size, bool use_lock,
@@ -55,6 +36,9 @@ bh_hash_map_create(uint32 size, bool use_lock,
         LOG_ERROR("HashMap create failed: alloc memory failed.\n");
         return NULL;
     }
+
+    if(BH_MALLOC==wasm_runtime_malloc)
+        alloc_info_ex(map, HashMapT, total_size - offsetof(HashMap, elements));
 
     memset(map, 0, (uint32)total_size);
 
@@ -106,6 +90,9 @@ bh_hash_map_insert(HashMap *map, void *key, void *value)
         LOG_ERROR("HashMap insert elem failed: alloc memory failed.\n");
         goto fail;
     }
+
+    if(BH_MALLOC == wasm_runtime_malloc)
+        alloc_info(elem, HashMapElemT);
 
     elem->key = key;
     elem->value = value;

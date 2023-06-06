@@ -5,27 +5,15 @@
 
 #include "bh_log.h"
 #include "wasm_shared_memory.h"
+#include "wasm_memory.h"
 
 static bh_list shared_memory_list_head;
 static bh_list *const shared_memory_list = &shared_memory_list_head;
 static korp_mutex shared_memory_list_lock;
 
-enum {
-    S_WAITING, S_NOTIFIED
-};
+enum { S_WAITING, S_NOTIFIED };
 
-typedef struct AtomicWaitInfo {
-    korp_mutex wait_list_lock;
-    bh_list wait_list_head;
-    bh_list *wait_list;
-} AtomicWaitInfo;
 
-typedef struct AtomicWaitNode {
-    bh_list_link l;
-    uint8 status;
-    korp_mutex wait_lock;
-    korp_cond wait_cond;
-} AtomicWaitNode;
 
 /* Atomic wait map */
 static HashMap *wait_map;
@@ -143,6 +131,7 @@ shared_memory_set_memory_inst(WASMModuleCommon *module,
 
     if (!(node = wasm_runtime_malloc(sizeof(WASMSharedMemNode))))
         return NULL;
+    alloc_info(node, WASMSharedMemNodeT);
 
     node->module = module;
     node->memory_inst = memory;
@@ -217,7 +206,7 @@ notify_wait_list(bh_list *wait_list, uint32 count)
     return notify_count;
 }
 
-static AtomicWaitInfo *
+static AtomicWaitInfo*
 acquire_wait_info(void *address, bool create)
 {
     AtomicWaitInfo *wait_info = NULL;
@@ -234,6 +223,8 @@ acquire_wait_info(void *address, bool create)
         if (!(wait_info =
                 (AtomicWaitInfo *)wasm_runtime_malloc(sizeof(AtomicWaitInfo))))
             return NULL;
+
+        alloc_info(wait_info, AtomicWaitInfoT);
         memset(wait_info, 0, sizeof(AtomicWaitInfo));
 
         /* init wait list */
@@ -346,6 +337,7 @@ wasm_runtime_atomic_wait(WASMModuleInstanceCommon *module, void *address,
             os_mutex_unlock(&wait_info->wait_list_lock);
             return -1;
         }
+        alloc_info(wait_node, AtomicWaitNodeT);
         memset(wait_node, 0, sizeof(AtomicWaitNode));
 
         if (0 != os_mutex_init(&wait_node->wait_lock)) {

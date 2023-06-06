@@ -12,6 +12,7 @@
 #include "ssp_config.h"
 #include "bh_platform.h"
 #include "str.h"
+#include "../../../../common/wasm_memory.h"
 
 static char *
 bh_strndup(const char *s, size_t n)
@@ -21,6 +22,8 @@ bh_strndup(const char *s, size_t n)
 
     if (!s1)
         return NULL;
+
+    alloc_info_buf(s1, charT, l + 1);
     bh_memcpy_s(s1, (uint32)(l + 1), s, (uint32)l);
     s1[l] = 0;
     return s1;

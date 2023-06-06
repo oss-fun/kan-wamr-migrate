@@ -4,6 +4,7 @@
  */
 
 #include "bh_common.h"
+#include "../../iwasm/common/wasm_memory.h"
 
 #ifdef RSIZE_MAX
 #undef RSIZE_MAX
@@ -88,6 +89,8 @@ bh_strdup(const char *s)
         size = (uint32)(strlen(s) + 1);
         if ((s1 = BH_MALLOC(size)))
             bh_memcpy_s(s1, size, s, size);
+        if(BH_MALLOC==wasm_runtime_malloc)
+            alloc_info_buf(s1, charT, size);
     }
     return s1;
 }
@@ -102,6 +105,8 @@ wa_strdup(const char *s)
         size = (uint32)(strlen(s) + 1);
         if ((s1 = WA_MALLOC(size)))
             bh_memcpy_s(s1, size, s, size);
+            if(WA_MALLOC==wasm_runtime_malloc)
+              alloc_info_buf(s1,charT,size);
     }
     return s1;
 }

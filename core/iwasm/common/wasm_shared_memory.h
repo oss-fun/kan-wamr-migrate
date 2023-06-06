@@ -31,6 +31,19 @@ typedef struct WASMSharedMemNode {
     uint32 ref_count;
 } WASMSharedMemNode;
 
+typedef struct AtomicWaitInfo {
+    korp_mutex wait_list_lock;
+    bh_list wait_list_head;
+    bh_list *wait_list;
+} AtomicWaitInfo;
+
+typedef struct AtomicWaitNode {
+    bh_list_link l;
+    uint8 status;
+    korp_mutex wait_lock;
+    korp_cond wait_cond;
+} AtomicWaitNode;
+
 bool
 wasm_shared_memory_init();
 

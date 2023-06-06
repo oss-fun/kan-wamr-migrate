@@ -16,8 +16,6 @@
 #define ASSERT_NOT_IMPLEMENTED() bh_assert(!"not implemented")
 #define UNREACHABLE()            bh_assert(!"unreachable")
 
-typedef struct wasm_module_ex_t wasm_module_ex_t;
-
 static void
 wasm_module_delete_internal(wasm_module_t *);
 
@@ -58,7 +56,6 @@ malloc_internal(uint64 size)
     if (size < UINT32_MAX && (mem = wasm_runtime_malloc((uint32)size))) {
         memset(mem, 0, size);
     }
-
     return mem;
 }
 
@@ -90,12 +87,23 @@ failed:                                                                       \
         }                                                                     \
     } while (false)
 
+#ifdef __FREE_DEBUG
+#define DEINIT_VEC(vector_p, deinit_func)                                     \
+    if ((vector_p)) {                                                         \
+        deinit_func(vector_p);                                                \
+        printf("wasm_c_api:98\n");                                            \
+        wasm_runtime_free(vector_p);                                          \
+        vector_p = NULL;                                                      \
+    }
+
+#else
 #define DEINIT_VEC(vector_p, deinit_func)                                     \
     if ((vector_p)) {                                                         \
         deinit_func(vector_p);                                                \
         wasm_runtime_free(vector_p);                                          \
         vector_p = NULL;                                                      \
     }
+#endif
 
 #define WASM_DEFINE_VEC(name)                                                 \
     void wasm_##name##_vec_new_empty(own wasm_##name##_vec_t *out)            \
@@ -268,6 +276,9 @@ wasm_engine_delete_internal(wasm_engine_t *engine)
 {
     if (engine) {
         DEINIT_VEC(engine->stores, wasm_store_vec_delete);
+#ifdef __FREE_DEBUG
+        printf("wasm_c_api:284\n");
+#endif
         wasm_runtime_free(engine);
     }
 
@@ -332,9 +343,11 @@ wasm_engine_new_internal(mem_alloc_type_t type, const MemAllocOption *opts)
     if (!(engine = malloc_internal(sizeof(wasm_engine_t)))) {
         goto failed;
     }
+    alloc_info(engine, wasm_engine_tT);
 
     /* create wasm_store_vec_t */
     INIT_VEC(engine->stores, wasm_store_vec_new_uninitialized, 1);
+    alloc_info(engine->stores, wasm_store_vec_tT);
 
     RETURN_OBJ(engine, wasm_engine_delete_internal)
 }
@@ -396,17 +409,21 @@ wasm_store_new(wasm_engine_t *engine)
         wasm_runtime_destroy_thread_env();
         return NULL;
     }
+    alloc_info(store, wasm_store_tT);
 
     /* new a vector, and new its data */
     INIT_VEC(store->modules, wasm_module_vec_new_uninitialized,
              DEFAULT_VECTOR_INIT_LENGTH);
+    alloc_info(store->modules, wasm_module_vec_tT);
     INIT_VEC(store->instances, wasm_instance_vec_new_uninitialized,
              DEFAULT_VECTOR_INIT_LENGTH);
+    alloc_info(store->instances, wasm_instance_vec_tT);
 
     if (!(store->foreigns = malloc_internal(sizeof(Vector)))
         || !(bh_vector_init(store->foreigns, 24, sizeof(Vector *)))) {
         goto failed;
     }
+    alloc_info(store->foreigns, VectorT);
 
     /* append to a store list of engine */
     if (!bh_vector_append((Vector *)singleton_engine->stores, &store)) {
@@ -450,9 +467,14 @@ wasm_store_delete(wasm_store_t *store)
     DEINIT_VEC(store->instances, wasm_instance_vec_delete);
     if (store->foreigns) {
         bh_vector_destroy(store->foreigns);
+#ifdef __FREE_DEBUG
+        printf("wasm_c_api:472\n");
+#endif
         wasm_runtime_free(store->foreigns);
     }
-
+#ifdef __FREE_DEBUG
+    printf("wasm_c_api:477\n");
+#endif
     wasm_runtime_free(store);
 
     wasm_runtime_destroy_thread_env();
@@ -493,6 +515,7 @@ wasm_valtype_new(wasm_valkind_t kind)
     if (!(val_type = malloc_internal(sizeof(wasm_valtype_t)))) {
         return NULL;
     }
+    alloc_info(val_type, wasm_valtype_tT);
 
     val_type->kind = kind;
 
@@ -503,6 +526,9 @@ void
 wasm_valtype_delete(wasm_valtype_t *val_type)
 {
     if (val_type) {
+#ifdef __FREE_DEBUG
+        printf("wasm_c_api:531\n");
+#endif
         wasm_runtime_free(val_type);
     }
 }
@@ -533,12 +559,14 @@ wasm_functype_new_internal(WASMType *type_rt)
     if (!(type = malloc_internal(sizeof(wasm_functype_t)))) {
         return NULL;
     }
+    alloc_info(type, wasm_functype_tT);
 
     type->extern_kind = WASM_EXTERN_FUNC;
 
     /* WASMType->types[0 : type_rt->param_count) -> type->params */
     INIT_VEC(type->params, wasm_valtype_vec_new_uninitialized,
              type_rt->param_count);
+    alloc_info(type->params, wasm_valtype_vec_tT);
     for (i = 0; i < type_rt->param_count; ++i) {
         if (!(param_type = wasm_valtype_new_internal(*(type_rt->types + i)))) {
             goto failed;
@@ -553,6 +581,7 @@ wasm_functype_new_internal(WASMType *type_rt)
     /* WASMType->types[type_rt->param_count : type_rt->result_count) -> type->results */
     INIT_VEC(type->results, wasm_valtype_vec_new_uninitialized,
              type_rt->result_count);
+    alloc_info(type->results, wasm_valtype_vec_tT);
     for (i = 0; i < type_rt->result_count; ++i) {
         if (!(result_type = wasm_valtype_new_internal(
                 *(type_rt->types + type_rt->param_count + i)))) {
@@ -591,6 +620,7 @@ wasm_functype_new(own wasm_valtype_vec_t *params,
     if (!(type = malloc_internal(sizeof(wasm_functype_t)))) {
         goto failed;
     }
+    alloc_info(type, wasm_functype_tT);
 
     type->extern_kind = WASM_EXTERN_FUNC;
 
@@ -598,12 +628,14 @@ wasm_functype_new(own wasm_valtype_vec_t *params,
     if (!(type->params = malloc_internal(sizeof(wasm_valtype_vec_t)))) {
         goto failed;
     }
+    alloc_info(type->params, wasm_valtype_vec_tT);
     bh_memcpy_s(type->params, sizeof(wasm_valtype_vec_t), params,
                 sizeof(wasm_valtype_vec_t));
 
     if (!(type->results = malloc_internal(sizeof(wasm_valtype_vec_t)))) {
         goto failed;
     }
+    alloc_info(type->results, wasm_valtype_vec_tT);
     bh_memcpy_s(type->results, sizeof(wasm_valtype_vec_t), results,
                 sizeof(wasm_valtype_vec_t));
 
@@ -655,7 +687,9 @@ wasm_functype_delete(wasm_functype_t *func_type)
 
     DEINIT_VEC(func_type->params, wasm_valtype_vec_delete);
     DEINIT_VEC(func_type->results, wasm_valtype_vec_delete);
-
+#ifdef __FREE_DEBUG
+    printf("wasm_c_api:690\n");
+#endif
     wasm_runtime_free(func_type);
 }
 
@@ -691,6 +725,7 @@ wasm_globaltype_new(own wasm_valtype_t *val_type, wasm_mutability_t mut)
     if (!(global_type = malloc_internal(sizeof(wasm_globaltype_t)))) {
         return NULL;
     }
+    alloc_info(global_type, wasm_globaltype_tT);
 
     global_type->extern_kind = WASM_EXTERN_GLOBAL;
     global_type->val_type = val_type;
@@ -728,7 +763,9 @@ wasm_globaltype_delete(wasm_globaltype_t *global_type)
         wasm_valtype_delete(global_type->val_type);
         global_type->val_type = NULL;
     }
-
+#ifdef __FREE_DEBUG
+    printf("wasm_c_api:766\n");
+#endif
     wasm_runtime_free(global_type);
 }
 
@@ -805,6 +842,7 @@ wasm_tabletype_new(own wasm_valtype_t *val_type, const wasm_limits_t *limits)
     if (!(table_type = malloc_internal(sizeof(wasm_tabletype_t)))) {
         return NULL;
     }
+    alloc_info(table_type, wasm_tabletype_tT);
 
     table_type->extern_kind = WASM_EXTERN_TABLE;
     table_type->val_type = val_type;
@@ -846,7 +884,9 @@ wasm_tabletype_delete(wasm_tabletype_t *table_type)
         wasm_valtype_delete(table_type->val_type);
         table_type->val_type = NULL;
     }
-
+#ifdef __FREE_DEBUG
+    printf("wasm_c_api:887\n");
+#endif
     wasm_runtime_free(table_type);
 }
 
@@ -889,6 +929,7 @@ wasm_memorytype_new(const wasm_limits_t *limits)
     if (!(memory_type = malloc_internal(sizeof(wasm_memorytype_t)))) {
         return NULL;
     }
+    alloc_info(memory_type, wasm_memorytype_tT);
 
     memory_type->extern_kind = WASM_EXTERN_MEMORY;
     memory_type->limits.min = limits->min;
@@ -911,6 +952,9 @@ void
 wasm_memorytype_delete(wasm_memorytype_t *memory_type)
 {
     if (memory_type) {
+#ifdef __FREE_DEBUG
+        printf("wasm_c_api:955\n");
+#endif
         wasm_runtime_free(memory_type);
     }
 }
@@ -1047,18 +1091,21 @@ wasm_importtype_new(own wasm_byte_vec_t *module_name,
     if (!(import_type = malloc_internal(sizeof(wasm_importtype_t)))) {
         return NULL;
     }
+    alloc_info(import_type, wasm_importtype_tT);
 
     /* take ownership */
     if (!(import_type->module_name =
             malloc_internal(sizeof(wasm_byte_vec_t)))) {
         goto failed;
     }
+    alloc_info(import_type->module_name, wasm_byte_vec_tT);
     bh_memcpy_s(import_type->module_name, sizeof(wasm_byte_vec_t), module_name,
                 sizeof(wasm_byte_vec_t));
 
     if (!(import_type->name = malloc_internal(sizeof(wasm_byte_vec_t)))) {
         goto failed;
     }
+    alloc_info(import_type->name, wasm_byte_vec_tT);
     bh_memcpy_s(import_type->name, sizeof(wasm_byte_vec_t), field_name,
                 sizeof(wasm_byte_vec_t));
 
@@ -1080,6 +1127,9 @@ wasm_importtype_delete(own wasm_importtype_t *import_type)
     DEINIT_VEC(import_type->module_name, wasm_byte_vec_delete);
     DEINIT_VEC(import_type->name, wasm_byte_vec_delete);
     wasm_externtype_delete(import_type->extern_type);
+#ifdef __FREE_DEBUG
+    printf("wasm_c_api:1130\n");
+#endif
     wasm_runtime_free(import_type);
 }
 
@@ -1162,11 +1212,13 @@ wasm_exporttype_new(own wasm_byte_vec_t *name,
     if (!(export_type = malloc_internal(sizeof(wasm_exporttype_t)))) {
         return NULL;
     }
+    alloc_info(export_type, wasm_exporttype_tT);
 
     if (!(export_type->name = malloc_internal(sizeof(wasm_byte_vec_t)))) {
         wasm_exporttype_delete(export_type);
         return NULL;
     }
+    alloc_info(export_type->name, wasm_byte_vec_tT);
     bh_memcpy_s(export_type->name, sizeof(wasm_byte_vec_t), name,
                 sizeof(wasm_byte_vec_t));
 
@@ -1217,6 +1269,9 @@ wasm_exporttype_delete(wasm_exporttype_t *export_type)
 
     wasm_externtype_delete(export_type->extern_type);
 
+#ifdef __FREE_DEBUG
+    printf("wasm_c_api:1272\n");
+#endif
     wasm_runtime_free(export_type);
 }
 
@@ -1243,6 +1298,9 @@ void
 wasm_val_delete(wasm_val_t *v)
 {
     if (v) {
+#ifdef __FREE_DEBUG
+        printf("wasm_c_api:1301\n");
+#endif
         wasm_runtime_free(v);
     }
 }
@@ -1352,6 +1410,7 @@ wasm_ref_new_internal(wasm_store_t *store,
     if (!(ref = malloc_internal(sizeof(wasm_ref_t)))) {
         return NULL;
     }
+    alloc_info(ref, wasm_ref_tT);
 
     ref->store = store;
     ref->kind = kind;
@@ -1364,6 +1423,9 @@ wasm_ref_new_internal(wasm_store_t *store,
 
         if (!(bh_vector_get(ref->store->foreigns, ref->ref_idx_rt, &foreign))
             || !foreign) {
+#ifdef __FREE_DEBUG
+            printf("wasm_c_api:1426\n");
+#endif
             wasm_runtime_free(ref);
             return NULL;
         }
@@ -1409,7 +1471,9 @@ wasm_ref_delete(own wasm_ref_t *ref)
             wasm_foreign_delete(foreign);
         }
     }
-
+#ifdef __FREE_DEBUG
+    printf("wasm_c_api:1474\n");
+#endif
     wasm_runtime_free(ref);
 }
 
@@ -1509,6 +1573,7 @@ wasm_frame_new(wasm_instance_t *instance,
     if (!(frame = malloc_internal(sizeof(wasm_frame_t)))) {
         return NULL;
     }
+    alloc_info(frame, wasm_frame_tT);
 
     frame->instance = instance;
     frame->module_offset = (uint32)module_offset;
@@ -1532,6 +1597,9 @@ void
 wasm_frame_delete(own wasm_frame_t *frame)
 {
     if (frame) {
+#ifdef __FREE_DEBUG
+        printf("wasm_c_api:1600\n");
+#endif
         wasm_runtime_free(frame);
     }
 }
@@ -1604,10 +1672,12 @@ wasm_trap_new_internal(WASMModuleInstanceCommon *inst_comm_rt,
     if (!(trap = malloc_internal(sizeof(wasm_trap_t)))) {
         return NULL;
     }
+    alloc_info(trap, wasm_trap_tT);
 
     if (!(trap->message = malloc_internal(sizeof(wasm_byte_vec_t)))) {
         goto failed;
     }
+    alloc_info(trap->message, wasm_byte_vec_tT);
 
     wasm_name_new_from_string_nt(trap->message, error_info);
     if (strlen(error_info) && !trap->message->data) {
@@ -1666,9 +1736,10 @@ wasm_trap_new(wasm_store_t *store, const wasm_message_t *message)
     if (!(trap = malloc_internal(sizeof(wasm_trap_t)))) {
         return NULL;
     }
+    alloc_info(trap, wasm_trap_tT);
 
     INIT_VEC(trap->message, wasm_byte_vec_new, message->size, message->data);
-
+    alloc_info(trap->message, wasm_byte_vec_tT);
     return trap;
 failed:
     wasm_trap_delete(trap);
@@ -1684,7 +1755,9 @@ wasm_trap_delete(wasm_trap_t *trap)
 
     DEINIT_VEC(trap->message, wasm_byte_vec_delete);
     /* reuse frames of WASMModuleInstance, do not free it here */
-
+#ifdef __FREE_DEBUG
+    printf("wasm_c_api:1758\n");
+#endif
     wasm_runtime_free(trap);
 }
 
@@ -1748,10 +1821,15 @@ wasm_trap_trace(const wasm_trap_t *trap, own wasm_frame_vec_t *out)
 failed:
     for (i = 0; i < out->num_elems; i++) {
         if (out->data[i]) {
+#ifdef __FREE_DEBUG
+            printf("wasm_c_api:1824\n");
+#endif
             wasm_runtime_free(out->data[i]);
         }
     }
-
+#ifdef __FREE_DEBUG
+    printf("wasm_c_api:1830\n");
+#endif
     wasm_runtime_free(out->data);
 }
 
@@ -1784,11 +1862,14 @@ wasm_foreign_new(wasm_store_t *store)
 
     if (!(foreign = malloc_internal(sizeof(wasm_foreign_t))))
         return NULL;
-
+    alloc_info(foreign, wasm_foreign_tT);
     foreign->store = store;
     foreign->kind = WASM_REF_foreign;
     foreign->foreign_idx_rt = (uint32)bh_vector_size(store->foreigns);
     if (!(bh_vector_append(store->foreigns, &foreign))) {
+#ifdef __FREE_DEBUG
+        printf("wasm_c_api:1870\n");
+#endif
         wasm_runtime_free(foreign);
         return NULL;
     }
@@ -1808,14 +1889,12 @@ wasm_foreign_delete(wasm_foreign_t *foreign)
 
     foreign->ref_cnt--;
     if (!foreign->ref_cnt) {
+#ifdef __FREE_DEBUG
+        printf("wasm_c_api:1892\n");
+#endif
         wasm_runtime_free(foreign);
     }
 }
-
-struct wasm_module_ex_t {
-    struct WASMModuleCommon *module_comm_rt;
-    wasm_byte_vec_t *binary;
-};
 
 static inline wasm_module_t *
 module_ext_to_module(wasm_module_ex_t *module_ex)
@@ -1877,9 +1956,9 @@ wasm_module_new(wasm_store_t *store, const wasm_byte_vec_t *binary)
     if (!module_ex) {
         goto failed;
     }
-
+    alloc_info(module_ex, wasm_module_ex_tT);
     INIT_VEC(module_ex->binary, wasm_byte_vec_new, binary->size, binary->data);
-
+    alloc_info(module_ex->binary, wasm_byte_vec_tT);
 #if WASM_ENABLE_AOT != 0 && WASM_ENABLE_JIT != 0
     if (Wasm_Module_Bytecode == pkg_type) {
         if (!(aot_file_buf = aot_compile_wasm_file(
@@ -1962,7 +2041,9 @@ wasm_module_delete_internal(wasm_module_t *module)
         wasm_runtime_unload(module_ex->module_comm_rt);
         module_ex->module_comm_rt = NULL;
     }
-
+#ifdef __FREE_DEBUG
+    printf("wasm_c_api:2049\n");
+#endif
     wasm_runtime_free(module_ex);
 }
 
@@ -2389,6 +2470,7 @@ wasm_func_new_basic(wasm_store_t *store,
     if (!(func = malloc_internal(sizeof(wasm_func_t)))) {
         goto failed;
     }
+    alloc_info(func, wasm_func_tT);
 
     func->store = store;
     func->kind = WASM_EXTERN_FUNC;
@@ -2415,6 +2497,7 @@ wasm_func_new_with_env_basic(wasm_store_t *store,
     if (!(func = malloc_internal(sizeof(wasm_func_t)))) {
         goto failed;
     }
+    alloc_info(func, wasm_func_tT);
 
     func->store = store;
     func->kind = WASM_EXTERN_FUNC;
@@ -2469,6 +2552,7 @@ wasm_func_new_internal(wasm_store_t *store,
     if (!func) {
         goto failed;
     }
+    alloc_info(func, wasm_func_tT);
 
     func->kind = WASM_EXTERN_FUNC;
 
@@ -2550,6 +2634,9 @@ wasm_func_delete(wasm_func_t *func)
 
     DELETE_HOST_INFO(func)
 
+#ifdef __FREE_DEBUG
+    printf("wasm_c_api:2579\n");
+#endif
     wasm_runtime_free(func);
 }
 
@@ -2800,6 +2887,7 @@ wasm_func_call(const wasm_func_t *func,
         if (!(argv = malloc_internal(sizeof(uint64) * alloc_count))) {
             goto failed;
         }
+        alloc_infos(argv, uint64T, alloc_count);
     }
 
     /* copy parametes */
@@ -2833,13 +2921,21 @@ wasm_func_call(const wasm_func_t *func,
         results->size = result_count;
     }
 
-    if (argv != argv_buf)
+    if (argv != argv_buf) {
+#ifdef __FREE_DEBUG
+        printf("wasm_c_api:2867\n");
+#endif
         wasm_runtime_free(argv);
+    }
     return NULL;
 
 failed:
-    if (argv != argv_buf)
+    if (argv != argv_buf) {
+#ifdef __FREE_DEBUG
+        printf("wasm_c_api:2876\n");
+#endif
         wasm_runtime_free(argv);
+    }
 
     /* trap -> exception -> trap */
     if (wasm_runtime_get_exception(func->inst_comm_rt)) {
@@ -2882,7 +2978,7 @@ wasm_global_new(wasm_store_t *store,
     if (!global) {
         goto failed;
     }
-
+    alloc_info(global, wasm_global_tT);
     global->store = store;
     global->kind = WASM_EXTERN_GLOBAL;
     global->type = wasm_globaltype_copy(global_type);
@@ -2894,6 +2990,7 @@ wasm_global_new(wasm_store_t *store,
     if (!global->init) {
         goto failed;
     }
+    alloc_info(global->init, wasm_val_tT);
 
     wasm_val_copy(global->init, init);
     /* TODO: how to check if above is failed */
@@ -2920,6 +3017,7 @@ wasm_global_copy(const wasm_global_t *src)
     if (!global) {
         goto failed;
     }
+    alloc_info(global, wasm_global_tT);
 
     global->kind = WASM_EXTERN_GLOBAL;
     global->type = wasm_globaltype_copy(src->type);
@@ -2931,6 +3029,7 @@ wasm_global_copy(const wasm_global_t *src)
     if (!global->init) {
         goto failed;
     }
+    alloc_info(global->init, wasm_val_tT);
 
     wasm_val_copy(global->init, src->init);
 
@@ -2963,7 +3062,9 @@ wasm_global_delete(wasm_global_t *global)
     }
 
     DELETE_HOST_INFO(global)
-
+#ifdef __FREE_DEBUG
+    printf("wasm_c_api:3007\n");
+#endif
     wasm_runtime_free(global);
 }
 
@@ -3148,6 +3249,7 @@ wasm_global_new_internal(wasm_store_t *store,
     if (!global) {
         goto failed;
     }
+    alloc_info(global, wasm_global_tT);
 
     global->store = store;
     global->kind = WASM_EXTERN_GLOBAL;
@@ -3202,6 +3304,7 @@ wasm_global_new_internal(wasm_store_t *store,
     if (!global->init) {
         goto failed;
     }
+    alloc_info(global->init, wasm_val_tT);
 
 #if WASM_ENABLE_INTERP != 0
     if (inst_comm_rt->module_type == Wasm_Module_Bytecode) {
@@ -3245,6 +3348,7 @@ wasm_table_new_basic(wasm_store_t *store, const wasm_tabletype_t *type)
     if (!(table = malloc_internal(sizeof(wasm_table_t)))) {
         goto failed;
     }
+    alloc_info(table, wasm_table_tT);
 
     table->store = store;
     table->kind = WASM_EXTERN_TABLE;
@@ -3275,6 +3379,7 @@ wasm_table_new_internal(wasm_store_t *store,
     if (!(table = malloc_internal(sizeof(wasm_table_t)))) {
         goto failed;
     }
+    alloc_info(table, wasm_table_tT);
 
     table->store = store;
     table->kind = WASM_EXTERN_TABLE;
@@ -3378,7 +3483,9 @@ wasm_table_delete(wasm_table_t *table)
     }
 
     DELETE_HOST_INFO(table)
-
+#ifdef __FREE_DEBUG
+    printf("wasm_c_api:3428\n");
+#endif
     wasm_runtime_free(table);
 }
 
@@ -3572,7 +3679,7 @@ wasm_memory_new_basic(wasm_store_t *store, const wasm_memorytype_t *type)
     if (!(memory = malloc_internal(sizeof(wasm_memory_t)))) {
         goto failed;
     }
-
+    alloc_info(memory, wasm_memory_tT);
     memory->store = store;
     memory->kind = WASM_EXTERN_MEMORY;
     memory->type = wasm_memorytype_copy(type);
@@ -3624,6 +3731,7 @@ wasm_memory_new_internal(wasm_store_t *store,
     if (!(memory = malloc_internal(sizeof(wasm_memory_t)))) {
         goto failed;
     }
+    alloc_info(memory, wasm_memory_tT);
 
     memory->store = store;
     memory->kind = WASM_EXTERN_MEMORY;
@@ -3686,7 +3794,9 @@ wasm_memory_delete(wasm_memory_t *memory)
     }
 
     DELETE_HOST_INFO(memory)
-
+#ifdef __FREE_DEBUG
+    printf("wasm_c_api:3739\n");
+#endif
     wasm_runtime_free(memory);
 }
 
@@ -4241,6 +4351,7 @@ aot_process_export(wasm_store_t *store,
         if (!(external->name = malloc_internal(sizeof(wasm_byte_vec_t)))) {
             goto failed;
         }
+        alloc_info(external->name, wasm_byte_vec_tT);
 
         wasm_name_new_from_string(external->name, export->name);
         if (strlen(export->name) && !external->name->data) {
@@ -4295,6 +4406,7 @@ wasm_instance_new_with_args(wasm_store_t *store,
     if (!instance) {
         goto failed;
     }
+    alloc_info(instance, wasm_instance_tT);
 
     /* link module and imports */
     if (imports) {
@@ -4304,10 +4416,11 @@ wasm_instance_new_with_args(wasm_store_t *store,
 
             INIT_VEC(instance->imports, wasm_extern_vec_new_uninitialized,
                      import_count);
-
+            alloc_info(instance->imports, wasm_extern_vec_tT);
             if (import_count) {
-                uint32 actual_link_import_count = interp_link(
-                  instance, MODULE_INTERP(module), (wasm_extern_t **)imports->data);
+                uint32 actual_link_import_count =
+                  interp_link(instance, MODULE_INTERP(module),
+                              (wasm_extern_t **)imports->data);
                 /* make sure a complete import list */
                 if ((int32)import_count < 0
                     || import_count != actual_link_import_count) {
@@ -4326,7 +4439,7 @@ wasm_instance_new_with_args(wasm_store_t *store,
 
             INIT_VEC(instance->imports, wasm_extern_vec_new_uninitialized,
                      import_count);
-
+            alloc_info(instance->imports, wasm_extern_vec_tT);
             if (import_count) {
                 import_count = aot_link(instance, MODULE_AOT(module),
                                         (wasm_extern_t **)imports->data);
@@ -4390,7 +4503,7 @@ wasm_instance_new_with_args(wasm_store_t *store,
 
         INIT_VEC(instance->exports, wasm_extern_vec_new_uninitialized,
                  export_cnt);
-
+        alloc_info(instance->exports, wasm_extern_vec_tT);
         if (!interp_process_export(
               store, (WASMModuleInstance *)instance->inst_comm_rt,
               instance->exports)) {
@@ -4411,7 +4524,7 @@ wasm_instance_new_with_args(wasm_store_t *store,
 
         INIT_VEC(instance->exports, wasm_extern_vec_new_uninitialized,
                  export_cnt);
-
+        alloc_info(instance->exports, wasm_extern_vec_tT);
         if (!aot_process_export(store,
                                 (AOTModuleInstance *)instance->inst_comm_rt,
                                 instance->exports)) {
@@ -4457,6 +4570,9 @@ wasm_instance_delete_internal(wasm_instance_t *instance)
         wasm_runtime_deinstantiate(instance->inst_comm_rt);
         instance->inst_comm_rt = NULL;
     }
+#ifdef __FREE_DEBUG
+    printf("wasm_c_api:4515\n");
+#endif
     wasm_runtime_free(instance);
 }
 
@@ -4530,6 +4646,9 @@ wasm_extern_delete(wasm_extern_t *external)
 
     if (external->name) {
         wasm_byte_vec_delete(external->name);
+#ifdef __FREE_DEBUG
+        printf("wasm_c_api:4591\n");
+#endif
         wasm_runtime_free(external->name);
         external->name = NULL;
     }

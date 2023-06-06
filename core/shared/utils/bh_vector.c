@@ -4,6 +4,7 @@
  */
 
 #include "bh_vector.h"
+#include "../../iwasm/common/wasm_memory.h"
 
 static uint8*
 alloc_vector_data(size_t length, size_t size_elem)
@@ -20,6 +21,8 @@ alloc_vector_data(size_t length, size_t size_elem)
     if ((data = BH_MALLOC((uint32)total_size))) {
         memset(data, 0, (uint32)total_size);
     }
+    if (BH_MALLOC == wasm_runtime_malloc)
+        alloc_info_buf(data, uint8T, total_size);
 
     return data;
 }

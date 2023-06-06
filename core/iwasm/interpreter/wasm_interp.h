@@ -7,6 +7,8 @@
 #define _WASM_INTERP_H
 
 #include "wasm.h"
+#include "wasm_runtime.h"
+#include "../common/wasm_exec_env.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -77,6 +79,14 @@ wasm_interp_call_wasm(struct WASMModuleInstance *module_inst,
                       struct WASMExecEnv *exec_env,
                       struct WASMFunctionInstance *function,
                       uint32 argc, uint32 argv[]);
+
+bool
+wasm_interp_restore(uint32 argc, uint32 argv[]);
+
+WASMInterpFrame *
+wasm_interp_alloc_frame(WASMExecEnv *exec_env,
+                        uint32 size,
+                        WASMInterpFrame *prev_frame);
 
 #ifdef __cplusplus
 }

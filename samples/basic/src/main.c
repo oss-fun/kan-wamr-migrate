@@ -8,16 +8,16 @@
 #include "bh_read_file.h"
 #include "bh_getopt.h"
 
-int intToStr(int x, char* str, int str_len, int digit);
+int intToStr(int x, char *str, int str_len, int digit);
 int get_pow(int x, int y);
 int32_t calculate_native(int32_t n, int32_t func1, int32_t func2);
 
-void print_usage(void)
+void
+print_usage(void)
 {
     fprintf(stdout, "Options:\r\n");
     fprintf(stdout, "  -f [path of wasm file] \n");
 }
-
 
 int main(int argc, char *argv_main[])
 {
@@ -34,26 +34,30 @@ int main(int argc, char *argv_main[])
     wasm_function_inst_t func2 = NULL;
     char * native_buffer = NULL;
     uint32_t wasm_buffer = 0;
+    bool restore_flag = false;
 
     RuntimeInitArgs init_args;
     memset(&init_args, 0, sizeof(RuntimeInitArgs));
 
-    while ((opt = getopt(argc, argv_main, "hf:")) != -1)
+    while ((opt = getopt(argc, argv_main, "hf:r")) != -1)
     {
         switch (opt)
         {
-        case 'f':
-            wasm_path = optarg;
-            break;
-        case 'h':
-            print_usage();
-            return 0;
-        case '?':
-            print_usage();
-            return 0;
+            case 'f':
+                wasm_path = optarg;
+                break;
+            case 'r':
+                restore_flag = true;
+                break;
+            case 'h':
+                print_usage();
+                return 0;
+            case '?':
+                print_usage();
+                return 0;
         }
     }
-    if (optind == 1) {
+    if (optind == 1 && !restore_flag) {
         print_usage();
         return 0;
     }
@@ -100,6 +104,14 @@ int main(int argc, char *argv_main[])
         return -1;
     }
 
+    if (restore_flag) {
+        uint32 argv[4];
+        printf("call restore_runtime\n");
+        wasm_runtime_restore(4, argv);
+        printf("end restore_runtime\n");
+        return 0;
+    }
+
     buffer = bh_read_file_to_buffer(wasm_path, &buf_size);
 
     if(!buffer) {
@@ -135,12 +147,13 @@ int main(int argc, char *argv_main[])
     argv[0] = 10;
     // the second arg will occupy two array elements
     memcpy(&argv[1], &arg_d, sizeof(arg_d));
-    *(float*)(argv+3) = 300.002;
+    *(float *)(argv+3) = 300.002;
 
-    if(!(func = wasm_runtime_lookup_function(module_inst, "generate_float", NULL))){
+    if (!(func = wasm_runtime_lookup_function(module_inst, "generate_float", NULL))) {
         printf("The generate_float wasm function is not found.\n");
         goto fail;
     }
+    printf("calling\n");
 
     // pass 4 elements for function arguments
     if (!wasm_runtime_call_wasm(exec_env, func, 4, argv) ) {
@@ -156,7 +169,7 @@ int main(int argc, char *argv_main[])
     uint32 argv2[4];
 
     // must allocate buffer from wasm instance memory space (never use pointer from host runtime)
-    wasm_buffer = wasm_runtime_module_malloc(module_inst, 100, (void**)&native_buffer);
+    wasm_buffer = wasm_runtime_module_malloc(module_inst, 100, (void **)&native_buffer);
 
     memcpy(argv2, &ret_val, sizeof(float)); // the first argument
     argv2[1] = wasm_buffer;     // the second argument is the wasm buffer address
@@ -175,6 +188,7 @@ int main(int argc, char *argv_main[])
         printf("call wasm function float_to_string failed. error: %s\n", wasm_runtime_get_exception(module_inst));
         goto fail;
     }
+
 
     wasm_function_inst_t func3 = wasm_runtime_lookup_function(module_inst,
                                                               "calculate",
@@ -199,8 +213,8 @@ fail:
         if(wasm_buffer) wasm_runtime_module_free(module_inst, wasm_buffer);
         wasm_runtime_deinstantiate(module_inst);
     }
-    if(module) wasm_runtime_unload(module);
-    if(buffer) BH_FREE(buffer);
+    if (module) wasm_runtime_unload(module);
+    if (buffer) //BH_FREE(buffer);
     wasm_runtime_destroy();
     return 0;
 }

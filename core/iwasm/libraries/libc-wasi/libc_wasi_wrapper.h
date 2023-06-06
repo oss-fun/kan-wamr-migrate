@@ -44,6 +44,16 @@ typedef __wasi_sdflags_t wasi_sdflags_t;
 typedef __wasi_dircookie_t wasi_dircookie_t;
 typedef __wasi_preopentype_t wasi_preopentype_t;
 
+typedef struct wasi_prestat_app {
+    wasi_preopentype_t pr_type;
+    uint32 pr_name_len;
+} wasi_prestat_app_t;
+
+typedef struct iovec_app {
+    uint32 buf_offset;
+    uint32 buf_len;
+} iovec_app_t;
+
 #ifdef __cplusplus
 }
 #endif
