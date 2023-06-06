@@ -6,26 +6,6 @@
 #include "bh_hashmap.h"
 #include "../../iwasm/common/wasm_memory.h"
 
-typedef struct HashMapElem {
-    void *key;
-    void *value;
-    struct HashMapElem *next;
-} HashMapElem;
-
-struct HashMap {
-    /* size of element array */
-    uint32 size;
-    /* lock for elements */
-    korp_mutex *lock;
-    /* hash function of key */
-    HashFunc hash_func;
-    /* key equal function */
-    KeyEqualFunc key_equal_func;
-    KeyDestroyFunc key_destroy_func;
-    ValueDestroyFunc value_destroy_func;
-    HashMapElem *elements[1];
-};
-
 HashMap*
 bh_hash_map_create(uint32 size, bool use_lock,
                    HashFunc hash_func,
