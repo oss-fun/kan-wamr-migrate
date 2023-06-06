@@ -12,14 +12,8 @@
 #define PRINT printf
 #endif
 
-typedef struct _app_timer {
-    struct _app_timer * next;
-    uint32 id;
-    uint32 interval;
-    uint64 expiry;
-    bool is_periodic;
-} app_timer_t;
 
+struct app_timer_t;
 struct _timer_ctx {
     app_timer_t *app_timers;
     app_timer_t *idle_timers;

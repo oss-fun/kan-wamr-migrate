@@ -15,6 +15,14 @@ extern "C" {
 uint64 bh_get_tick_ms();
 uint32 bh_get_elpased_ms(uint32 *last_system_clock);
 
+typedef struct _app_timer {
+    struct _app_timer * next;
+    uint32 id;
+    uint32 interval;
+    uint64 expiry;
+    bool is_periodic;
+} app_timer_t;
+
 struct _timer_ctx;
 typedef struct _timer_ctx * timer_ctx_t;
 typedef void (*timer_callback_f)(unsigned int id, unsigned int owner);
