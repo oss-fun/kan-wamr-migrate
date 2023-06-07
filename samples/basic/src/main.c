@@ -154,62 +154,62 @@ main(int argc, char *argv_main[])
         goto fail;
     }
 
-    float ret_val;
-    memcpy(&ret_val, argv, sizeof(float));
-    printf("Native finished calling wasm function generate_float(), returned "
-           "a float value: %ff\n",
-           ret_val);
+    // NOTE: わかりやすさのために、１つ目の関数しか呼ばない
+    // float ret_val;
+    // memcpy(&ret_val, argv, sizeof(float));
+    // printf("Native finished calling wasm function generate_float(), returned "
+    //        "a float value: %ff\n",
+    //        ret_val);
 
-    // Next we will pass a buffer to the WASM function
-    uint32 argv2[4];
+    // // Next we will pass a buffer to the WASM function
+    // uint32 argv2[4];
 
-    // must allocate buffer from wasm instance memory space (never use pointer from host runtime)
-    wasm_buffer =
-      wasm_runtime_module_malloc(module_inst, 100, (void **)&native_buffer);
+    // // must allocate buffer from wasm instance memory space (never use pointer from host runtime)
+    // wasm_buffer =
+    //   wasm_runtime_module_malloc(module_inst, 100, (void **)&native_buffer);
 
-    memcpy(argv2, &ret_val, sizeof(float)); // the first argument
-    argv2[1] = wasm_buffer; // the second argument is the wasm buffer address
-    argv2[2] = 100;         //  the third argument is the wasm buffer size
-    argv2[3] =
-      3; //  the last argument is the digits after decimal point for converting float to string
+    // memcpy(argv2, &ret_val, sizeof(float)); // the first argument
+    // argv2[1] = wasm_buffer; // the second argument is the wasm buffer address
+    // argv2[2] = 100;         //  the third argument is the wasm buffer size
+    // argv2[3] = 3; //  the last argument is the digits after decimal point for converting float to string
 
-    if (!(func2 = wasm_runtime_lookup_function(module_inst, "float_to_string",
-                                               NULL))) {
-        printf(
-          "The wasm function float_to_string wasm function is not found.\n");
-        goto fail;
-    }
+    // if (!(func2 = wasm_runtime_lookup_function(module_inst, "float_to_string",
+    //                                            NULL))) {
+    //     printf(
+    //       "The wasm function float_to_string wasm function is not found.\n");
+    //     goto fail;
+    // }
 
-    if (wasm_runtime_call_wasm(exec_env, func2, 4, argv2)) {
-        printf("Native finished calling wasm function: float_to_string, "
-               "returned a formatted string: %s\n",
-               native_buffer);
-    }
-    else {
-        printf("call wasm function float_to_string failed. error: %s\n",
-               wasm_runtime_get_exception(module_inst));
-        goto fail;
-    }
+    // if (wasm_runtime_call_wasm(exec_env, func2, 4, argv2)) {
+    //     printf("Native finished calling wasm function: float_to_string, "
+    //            "returned a formatted string: %s\n",
+    //            native_buffer);
+    // }
+    // else {
+    //     printf("call wasm function float_to_string failed. error: %s\n",
+    //            wasm_runtime_get_exception(module_inst));
+    //     goto fail;
+    // }
 
-    wasm_function_inst_t func3 =
-      wasm_runtime_lookup_function(module_inst, "calculate", NULL);
-    if (!func3) {
-        printf("The wasm function calculate is not found.\n");
-        goto fail;
-    }
+    // wasm_function_inst_t func3 =
+    //   wasm_runtime_lookup_function(module_inst, "calculate", NULL);
+    // if (!func3) {
+    //     printf("The wasm function calculate is not found.\n");
+    //     goto fail;
+    // }
 
-    uint32_t argv3[1] = { 3 };
-    if (wasm_runtime_call_wasm(exec_env, func3, 1, argv3)) {
-        uint32_t result = *(uint32_t *)argv3;
-        printf(
-          "Native finished calling wasm function: calculate, return: %d\n",
-          result);
-    }
-    else {
-        printf("call wasm function calculate failed. error: %s\n",
-               wasm_runtime_get_exception(module_inst));
-        goto fail;
-    }
+    // uint32_t argv3[1] = { 3 };
+    // if (wasm_runtime_call_wasm(exec_env, func3, 1, argv3)) {
+    //     uint32_t result = *(uint32_t *)argv3;
+    //     printf(
+    //       "Native finished calling wasm function: calculate, return: %d\n",
+    //       result);
+    // }
+    // else {
+    //     printf("call wasm function calculate failed. error: %s\n",
+    //            wasm_runtime_get_exception(module_inst));
+    //     goto fail;
+    // }
 
 fail:
     if (exec_env)

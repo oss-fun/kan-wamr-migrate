@@ -9,114 +9,67 @@
 #include <stdint.h>
 
 int
-intToStr(int x, char *str, int str_len, int digit);
-int
-get_pow(int x, int y);
-int32_t
-calculate_native(int32_t n, int32_t func1, int32_t func2);
+lifegame()
+{
+    int N = 10;
+    int map[2][N + 2][N + 2];
+    int i, j, turn, k, tmp;
 
-int32_t
-mul7(int32_t n);
+    memset(map, 0, sizeof(map));
+    for (i = 1; i <= N; i++)
+        for (j = 1; j <= N; j++)
+            map[0][i][j] = (i * j) % 2;
 
-typedef struct Node {
-    float f;
-    struct Node *next;
-} Node;
+    turn = 0;
+    for (k = 0;; k++) {
+        // printf("\033[2J");
+        printf("k:%d\n", k);
+        for (i = 1; i <= N; i++) {
+            for (j = 1; j <= N; j++)
+                putchar(map[turn][i][j] ? '#' : '.');
+            puts("");
+        }
+        puts("");
 
-static Node *root=NULL;
-//
-// Primitive parameters functions
-//
+        for (i = 1; i <= N; i++) {
+            for (j = 1; j <= N; j++) {
+                tmp = map[turn][i + 1 > N ? 1 : i + 1][j]
+                      + map[turn][i - 1 ?: N][j]
+                      + map[turn][i][j + 1 > N ? 1 : j + 1]
+                      + map[turn][i][j - 1 ?: N]
+                      + map[turn][i + 1 > N ? 1 : i + 1][j + 1 > N ? 1 : j + 1]
+                      + map[turn][i + 1 > N ? 1 : i + 1][j - 1 ?: N]
+                      + map[turn][i - 1 ?: N][j + 1 > N ? 1 : j + 1]
+                      + map[turn][i - 1 ?: N][j - 1 ?: N];
+                if (map[turn][i][j]) {
+                    map[turn ^ 1][i][j] = (tmp == 2 || tmp == 3);
+                }
+                else {
+                    map[turn ^ 1][i][j] = (tmp == 3);
+                }
+            }
+        }
+
+        turn ^= 1;
+    }
+
+    return 0;
+}
+
 float
 generate_float(int iteration, double seed1, float seed2)
 {
-    float ret;
-    int *p;
-    Node *node;
-
     printf("calling into WASM function: %s\n", __FUNCTION__);
 
-    for (int i = 0; i < iteration; i++) {
-        node = malloc(sizeof(Node));
-        ret += 1.0f / seed1 + seed2;
-        node->f = ret;
-        node->next = root;
-        root = node;
-    }
-
-    node = root;
-    for (int i = 0; i < 100000; i++) {
-        int tmp;
-        p = malloc(sizeof(*p));
-        *p = i;
-        printf("%d\n", *p);
-        tmp=mul7(*p);
-        if (node != NULL) {
-            printf("%d\n", *p + (int)node->f);
-            node = node->next;
-            
-        }
-        printf("tmp:%d\n", tmp);
-
-        free(p);
-    }
+    lifegame();
+    // for (int i = 0; i < 100000; i++) {
+    //     printf("count: %d\n", i);
+    // }
     printf("exit from WASM function: %s\n", __FUNCTION__);
 
-    return ret;
+    return 0;
 }
 
-// Converts a floating-point/double number to a string.
-// intToStr() is implemented outside wasm app
-void
-float_to_string(float n, char *res, int res_size, int afterpoint)
-{
-    printf("calling into WASM function: %s\n", __FUNCTION__);
-
-    // Extract integer part
-    int ipart = (int)n;
-    printf("%p\n", root);
-    // Extract floating part
-    float fpart = n - (float)ipart;
-
-    // convert integer part to string
-    int i = intToStr(ipart, res, res_size, 0);
-
-    // check for display option after point
-    if (afterpoint != 0) {
-        res[i] = '.'; // add dot
-
-        // Get the value of fraction part upto given no.
-        // of points after dot. The third parameter
-        // is needed to handle cases like 233.007
-        fpart = fpart * get_pow(10, afterpoint);
-
-        intToStr((int)fpart, res + i + 1, sizeof(res + i + 1), afterpoint);
-    }
-}
-
-int32_t
-mul7(int32_t n)
-{
-    printf("calling into WASM function: %s,", __FUNCTION__);
-    n = n * 7;
-    printf("    %s return %d \n", __FUNCTION__, n);
-    return n;
-}
-
-int32_t
-mul5(int32_t n)
-{
-    printf("calling into WASM function: %s,", __FUNCTION__);
-    n = n * 5;
-    printf("    %s return %d \n", __FUNCTION__, n);
-    return n;
-}
-
-int32_t
-calculate(int32_t n)
-{
-    printf("calling into WASM function: %s\n", __FUNCTION__);
-    int32_t (*f1)(int32_t) = &mul5;
-    int32_t (*f2)(int32_t) = &mul7;
-    return calculate_native(n, (uint32_t)f1, (uint32_t)f2);
+int main() {
+    generate_float(0,0,0);
 }

@@ -1006,6 +1006,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
                                WASMInterpFrame *prev_frame,
                                bool migr_flag)
 {
+    printf("##\n");
     signal(SIGINT, &wasm_interp_signal);
 
     if (migr_flag) {
