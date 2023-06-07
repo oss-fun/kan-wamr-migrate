@@ -1187,8 +1187,10 @@ MIGRATION:
         opcode = *frame_ip++;
         migr_count++;
         if (sig_flag) {
+#ifdef __FREE_DEBUG
             printf("checkpoint\n");
             printf("migr_count:%lu\n", migr_count);
+#endif
             if (migr_flag) {
                 abs_translation();
             }
@@ -1313,7 +1315,9 @@ MIGRATION:
             exit(0);
         }
     RESUME:
+#ifdef __FREE_DEBUG
         printf("opcode:%x\n", opcode);
+#endif
         switch (opcode) {
 #else
     FETCH_OPCODE_AND_DISPATCH();
