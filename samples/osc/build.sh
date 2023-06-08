@@ -21,7 +21,7 @@ echo "#####################build basic project"
 cd ${CURR_DIR}
 mkdir -p cmake_build
 cd cmake_build
-cmake ..
+cmake .. 
 make
 if [ $? != 0 ];then
     echo "BUILD_FAIL basic exit as $?\n"
@@ -49,14 +49,14 @@ SYSROOT_PATH=/opt/wasi-sdk/share/wasi-sysroot
 #        -Wl,--allow-undefined-file=${WAMR_DIR}/wamr-sdk/app/libc-builtin-sysroot/share/defined-symbols.txt \
 
 #--sysroot=/opt/wasi-sdk/share/wasi-sysroot \
+
 /opt/wasi-sdk/bin/clang     \
         --target=wasm32-wasi -O0 -z stack-size=4096 -Wl,--initial-memory=65536 \
         --sysroot=$SYSROOT_PATH  \
         -Wl,--allow-undefined-file=${WAMR_DIR}/wamr-sdk/app/libc-builtin-sysroot/share/defined-symbols.txt \
         -Wl,--strip-all,--no-entry -nostdlib \
-        -Wl,--export=generate_float \
-        -Wl,--export=float_to_string \
-        -Wl,--export=calculate\
+        -Wl,--export=main \
+        -Wl,--export=sleep \
         -Wl,--export=malloc \
         -Wl,--export=free \
         -Wl,--allow-undefined \

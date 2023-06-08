@@ -7,6 +7,9 @@
 #include "wasm_export.h"
 #include "math.h"
 
+#include <unistd.h>
+
+
 extern bool
 wasm_runtime_call_indirect(wasm_exec_env_t exec_env,
                            uint32_t element_indices,
@@ -93,4 +96,10 @@ calculate_native(wasm_exec_env_t exec_env, int32_t n, int32_t func1,
     uint32_t n2 = argv[0];
     printf("call func2 and return n2=%d\n", n2);
     return n1 + n2;
+}
+
+unsigned int
+wrapped_sleep(unsigned int seconds)
+{
+    sleep(seconds);
 }
