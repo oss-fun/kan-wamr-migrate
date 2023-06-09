@@ -7,14 +7,9 @@
 #include "bh_read_file.h"
 #include "bh_getopt.h"
 
-int
-intToStr(int x, char *str, int str_len, int digit);
-int
-get_pow(int x, int y);
-int32_t
-calculate_native(int32_t n, int32_t func1, int32_t func2);
-unsigned int
-wrapped_sleep(unsigned int seconds);
+
+static int app_argc;
+static char **app_argv;
 
 void
 print_usage(void)
@@ -23,10 +18,21 @@ print_usage(void)
     fprintf(stdout, "  -f [path of wasm file] \n");
 }
 
+static void *
+app_instance_main(wasm_module_inst_t module_inst)
+{
+    const char *exception;
+
+    wasm_application_execute_main(module_inst, app_argc, app_argv);
+    if ((exception = wasm_runtime_get_exception(module_inst)))
+        printf("%s\n", exception);
+    return NULL;
+}
+
 int
 main(int argc, char *argv_main[])
 {
-    static char global_heap_buf[2048 * 1024];
+    static char global_heap_buf[2048 * 1024 * 10];
     char *buffer, error_buf[128];
     int opt;
     char *wasm_path = NULL;
@@ -142,25 +148,27 @@ main(int argc, char *argv_main[])
         goto fail;
     }
 
-    exec_env = wasm_runtime_create_exec_env(module_inst, stack_size);
-    if (!exec_env) {
-        printf("Create wasm execution environment failed.\n");
-        goto fail;
-    }
+    app_instance_main(module_inst);
 
-    uint32 argv[2];
-    if (!(func = wasm_runtime_lookup_function(module_inst, "main",
-                                              NULL))) {
-        printf("The main wasm function is not found.\n");
-        goto fail;
-    }
-    printf("calling\n");
-    // pass 4 elements for function arguments
-    if (!wasm_runtime_call_wasm(exec_env, func, 2, argv)) {
-        printf("call wasm function main failed. %s\n",
-               wasm_runtime_get_exception(module_inst));
-        goto fail;
-    }
+    // exec_env = wasm_runtime_create_exec_env(module_inst, stack_size);
+    // if (!exec_env) {
+    //     printf("Create wasm execution environment failed.\n");
+    //     goto fail;
+    // }
+    // 
+    // uint32 argv[2];
+    // if (!(func = wasm_runtime_lookup_function(module_inst, "main",
+    //                                           NULL))) {
+    //     printf("The main wasm function is not found.\n");
+    //     goto fail;
+    // }
+    // printf("calling\n");
+    // // pass 4 elements for function arguments
+    // if (!wasm_runtime_call_wasm(exec_env, func, 2, argv)) {
+    //     printf("call wasm function main failed. %s\n",
+    //            wasm_runtime_get_exception(module_inst));
+    //     goto fail;
+    // }
 
 
 fail:
