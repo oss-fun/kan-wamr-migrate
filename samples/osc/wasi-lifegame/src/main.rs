@@ -1,4 +1,4 @@
-use rand::{Rng, thread_rng};
+use rand::Rng;
 
 fn main() {
     const N: usize = 30;
@@ -7,7 +7,8 @@ fn main() {
     let mut rng = rand::thread_rng();
     for i in 1..N+1 {
         for j in 1..N+1 {
-            map[0][i][j] = rng.gen_range(0, 2) == 1;
+            let r: i32 = rng.gen();
+            map[0][i][j] = r % 2 == 0;
         }
     }
 
